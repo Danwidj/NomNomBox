@@ -1,4 +1,4 @@
 .env
 venv/
-pyenv.cfg
+pyvenv.cfg
 __pycache__
