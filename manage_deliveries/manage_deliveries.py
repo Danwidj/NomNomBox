@@ -5,29 +5,110 @@ import os
 from dotenv import load_dotenv, dotenv_values
 from datetime import datetime, timezone
 from invokes import invoke_http
+import amqp_lib
+import json
+import pika
+import sys
 
 app = Flask(__name__)
 
 CORS(app)
 
 user_URL = "http://localhost:5000/user"
+driver_assignment_URL = "http://localhost:5002/driver_assignment"
+order_URL = "http://localhost:5001/order"
 
 
-def processPlaceDeliveryRequest(delivery):
+# RabbitMQ
+rabbit_host = "localhost"
+rabbit_port = 5672
+exchange_name = "deliveries_topic"
+exchange_type = "topic"
+
+def connectAMQP():
+    # Use global variables to reduce number of reconnection to RabbitMQ
+    # There are better ways but this suffices for our lab
+    global connection
+    global channel
+
+    print("  Connecting to AMQP broker...")
+    try:
+        connection, channel = amqp_lib.connect(
+                hostname=rabbit_host,
+                port=rabbit_port,
+                exchange_name=exchange_name,
+                exchange_type=exchange_type,
+        )
+    except Exception as exception:
+        print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
+        exit(1) # terminate
+
+
+def processPlaceDeliveryRequest(delivery_request):
     #1 get the user info
-    user_information = invoke_http(user_URL + "/user/" + str(delivery["user_id"]), method='GET')
+    user_information = invoke_http(user_URL + "/user/" + str(delivery_request["user_id"]), method='GET')
+    print("user_information:", user_information)
+    user_address = user_information["address"]
+
+    #2 send the delivery details to driver assignment service
+    delivery_time = delivery_request["delivery_time"]
+    order_id = delivery_request["order_id"]
+    user_id = delivery_request["user_id"]
+    delivery_details = { 
+        "delivery_time" : delivery_time, 
+        "order_id" : order_id, 
+        "user_address" : user_address
+    };
+
+    assigned_driver = invoke_http(driver_assignment_URL, json=delivery_details, method='POST')
+
+    #3 update the order
+
+    order = invoke_http(order_URL + "/order/" + str(order_id), method='GET')
+    order["delivery_id"] = assigned_driver["delivery_id"]
+    order["delivery_status"] = "Assigned To Driver"
+    order = invoke_http(order_URL + "/order/" + str(order_id), json=order, method='PUT')
+
+    if connection is None or not amqp_lib.is_connection_open(connection):
+        connectAMQP()
+
+    
+    
+    #convert order dict to string
+    notification_message = {
+        "status": delivery_status,
+        "email": user_information["email"],
+        "delivery_time": delivery_time,
+        "order_id": order_id,
+        "name": user_information["Name"],
+    }
+    notification_message = json.dumps(notification_message)
+
+    delivery_status = order["delivery_status"]
+    if delivery_status == "Assigned To Driver":
+        # Inform the notification microservice
+        print("  Publish message with routing_key=deliveries.assigned\n")
+        channel.basic_publish(
+                exchange=exchange_name,
+                routing_key="deliveries.assigned",
+                body=notification_message,
+                properties=pika.BasicProperties(delivery_mode=2),
+        )
+
+
+
+
 
 @app.route("/place_delivery_request", methods=['POST'])
 def place_delivery_request():
 # Simple check of input format and data of the request are JSON
     if request.is_json:
         try:
-            delivery = request.get_json()
-            print("\nReceived a delivery request in JSON:", delivery)
+            delivery_request = request.get_json()
+            print("\nReceived a delivery request in JSON:", delivery_request)
 
-            # do the actual work
-            # 1. Send order info {cart items}
-            result = processPlaceDeliveryRequest(delivery)
+
+            result = processPlaceDeliveryRequest(delivery_request)
             return jsonify(result), result["code"]
 
         except Exception as e:
@@ -52,65 +133,7 @@ def place_delivery_request():
     
 
 
-@app.route("/delivery/<int:id>")
-def get_delivery(id):
-    delivery = db.session.scalar(db.select(Delivery).filter_by(id=id))
 
-    if delivery:
-        return jsonify({"code": 200, "data": delivery.json()})
-    return jsonify({"code": 404, "message": "Delivery not found."}), 404
-
-
-@app.route("/delivery", methods=["POST"])
-def create_delivery():
-
-    data = request.get_json()
-    delivery = Delivery(**data)
-
-    try:
-        db.session.add(delivery)
-        db.session.commit()
-    except Exception as e:
-        print("Exception:{}".format(str(e)))
-        return (
-            jsonify(
-                {
-                    "code": 500,
-                    "message": "An error occurred creating the delivery.",
-                }
-            ),
-            500,
-        )
-
-    return jsonify({"code": 201, "data": delivery.json()}), 201
-
-@app.route("/delivery/<int:id>", methods=["PUT"])
-def update_delivery(id):
-    delivery = db.session.scalar(db.select(Delivery).filter_by(id=id))
-
-    if not delivery:
-        return jsonify({"code": 404, "message": "Delivery not found."}), 404
-
-    data = request.get_json()
-
-    for key, value in data.items():
-        setattr(delivery, key, value)
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        print("Exception:{}".format(str(e)))
-        return (
-            jsonify(
-                {
-                    "code": 500,
-                    "message": "An error occurred updating the delivery.",
-                }
-            ),
-            500,
-        )
-
-    return jsonify({"code": 200, "data": delivery.json()}), 200
 
 
 
