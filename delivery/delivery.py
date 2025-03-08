@@ -120,6 +120,13 @@ def get_deliveries():
         return jsonify({"code": 404, "message": "There are no deliveries."}), 404
 
 
+@app.route("/delivery/<int:id>")
+def get_delivery(id):
+    delivery = db.session.scalar(db.select(Delivery).filter_by(id=id))
+
+    if delivery:
+        return jsonify({"code": 200, "data": delivery.json()})
+    return jsonify({"code": 404, "message": "Delivery not found."}), 404
 
 
 @app.route("/delivery", methods=["POST"])
@@ -144,6 +151,34 @@ def create_delivery():
         )
 
     return jsonify({"code": 201, "data": delivery.json()}), 201
+
+@app.route("/delivery/<int:id>", methods=["PUT"])
+def update_delivery(id):
+    delivery = db.session.scalar(db.select(Delivery).filter_by(id=id))
+
+    if not delivery:
+        return jsonify({"code": 404, "message": "Delivery not found."}), 404
+
+    data = request.get_json()
+
+    for key, value in data.items():
+        setattr(delivery, key, value)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print("Exception:{}".format(str(e)))
+        return (
+            jsonify(
+                {
+                    "code": 500,
+                    "message": "An error occurred updating the delivery.",
+                }
+            ),
+            500,
+        )
+
+    return jsonify({"code": 200, "data": delivery.json()}), 200
 
 
 
