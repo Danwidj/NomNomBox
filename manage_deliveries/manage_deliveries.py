@@ -80,7 +80,8 @@ def processPlaceDeliveryRequest(delivery_request):
     };
     assigned_driver = assignDriver(delivery_details)
 
-    
+    # NEED TO ADD STEP HERE TO POST TO DELIVERY TO GET DELIVERY ID. 
+
 
     #3 update the order
     order = updateOrder(order_id, assigned_driver["delivery_id"])
