@@ -28,15 +28,15 @@ class Delivery(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, nullable=False)
-    delivery_time = db.Column(db.TIMESTAMP(timezone=True), nullable=False)
+    timeslot = db.Column(db.TIMESTAMP(timezone=True), nullable=False)
     location = db.Column(db.Text, nullable=False)
     driver_id = db.Column(db.Integer, nullable=False)
 
 
 
-    def __init__(self, order_id, delivery_time, location, driver_id):
+    def __init__(self, order_id, timeslot, location, driver_id):
         self.order_id = order_id
-        self.delivery_time = delivery_time
+        self.timeslot = timeslot
         self.location = location
         self.driver_id = driver_id
 
@@ -45,7 +45,7 @@ class Delivery(db.Model):
         return {
             "id": self.id,
             "order_id": self.order_id,
-            "delivery_time": self.delivery_time,
+            "timeslot": self.timeslot,
             "driver_id": self.driver_id,
             "location": self.location,
         }
@@ -54,7 +54,7 @@ def get_delivery_by_time(start_time, end_time):
     start_time = datetime.fromtimestamp(int(start_time), timezone.utc)
     end_time = datetime.fromtimestamp(int(end_time), timezone.utc)
     print(start_time, end_time)
-    delivery_list = db.session.scalars(db.select(Delivery).filter(Delivery.delivery_time >= start_time, Delivery.delivery_time + timedelta(minutes=30) <= end_time)).all()
+    delivery_list = db.session.scalars(db.select(Delivery).filter(Delivery.timeslot >= start_time, Delivery.timeslot + timedelta(minutes=30) <= end_time)).all()
 
     if len(delivery_list):
         return jsonify(
