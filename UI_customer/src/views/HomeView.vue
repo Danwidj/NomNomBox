@@ -43,15 +43,12 @@
       </div>
       <a href="#sign-up" class="btn">Select a Plan</a>
     </section>
-
-    <footer class="footer">
-      <p>&copy; 2025 MealKit. All rights reserved.</p>
-      <p><a href="#contact">Contact Us</a> | <a href="#faq">FAQ</a></p>
-    </footer>
   </div>
 </template>
 
 <script>
+import FooterComponent from '@/components/FooterComponent.vue';
+
 export default {
   name: "HomePage",
 };
@@ -127,14 +124,5 @@ body {
   display: inline-block;
   margin-top: 20px;
   font-size: 1.3rem;
-}
-
-.footer {
-  text-align: center;
-  padding: 30px;
-  background-color: #222;
-  color: white;
-  width: 100%;
-  font-size: 1.2rem;
 }
 </style>
