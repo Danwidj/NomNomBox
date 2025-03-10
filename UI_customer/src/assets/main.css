@@ -1,115 +1,108 @@
 @import './base.css';
 
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f8f8f8;
+  color: #333;
+  text-align: center;
+}
 
-#app {
-  max-width: 1280px;
+.container {
+  width: 100%;
   margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+  padding: 0;
 }
 
-a,
-.green {
+/* Hero Section */
+.hero {
+  text-align: center;
+  padding: 120px 5%;
+  background: url('https://source.unsplash.com/1600x900/?food') no-repeat center center/cover;
+  color: white;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 550px;
+}
+
+.hero-content {
+  max-width: 800px;
+  font-size: 1.8rem;
+  text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Section Layout */
+.section {
+  text-align: center;
+  padding: 70px 5%;
+  background: white;
+  margin: 20px auto;
+  border-radius: 12px;
+  box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.1);
+  width: 95%;
+  max-width: 1300px;
+  font-size: 1.4rem;
+}
+
+/* Grid Layout for Steps, Meals, and Plans */
+.steps, .meal-container, .plans {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 40px;
+  font-size: 1.2rem;
+}
+
+/* Buttons */
+.btn {
+  background-color: #ff6600;
+  color: white;
+  padding: 18px 30px;
+  border-radius: 8px;
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 1.3rem;
+  transition: background 0.3s ease;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+.btn:hover {
+  background-color: #e65c00;
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 35px;
+  background-color: #222;
+  color: white;
+  width: 100%;
+  font-size: 1.2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .hero {
+    height: 400px;
+    padding: 100px 10%;
   }
   
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+  .hero-content {
+    font-size: 1.6rem;
+  }
+  
+  .section {
+    width: 90%;
+    padding: 50px 5%;
+    font-size: 1.2rem;
+  }
+
+  .steps, .meal-container, .plans {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
   }
 }
-
-/* @tailwind base;
-@tailwind components;
-@tailwind utilities; */
-
-/* @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-  }
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-@layer components {
-  .navbar {
-    @apply bg-background text-foreground shadow-md px-6 py-4 flex items-center justify-between;
-  }
-
-  .nav-link {
-    @apply text-primary hover:underline transition-colors duration-200;
-  }
-} */
