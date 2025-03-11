@@ -9,6 +9,8 @@ import json
 import threading
 import time
 from kafka import KafkaConsumer
+from datetime import timedelta
+import traceback
 
 app = Flask(__name__)
 
@@ -63,25 +65,63 @@ def consume(consumer):
             decoded_message = msg.value.decode('utf-8')
             print(f"Received: {decoded_message}")  # Log message
             messages.append(json.loads(decoded_message))  # Store message in memory
-            
 
-        print(f"Messages: {messages}")
+            received_event = json.loads(decoded_message)
+            schedule_change = received_event["changes"]
+            driver_id = received_event["driver_id"]
+            with app.app_context():
+                for change in schedule_change:
+                    start_time = datetime.fromtimestamp(int(change["start_time"]), timezone.utc)
+                    end_time = datetime.fromtimestamp(int(change["end_time"]), timezone.utc)
+                    counter_time = start_time
+                    # print (start_time, end_time)
+                    if change["change_type"] == "add":
+                        while counter_time < end_time:
+                            new_schedule = Schedule(
+                                timeslot=counter_time,
+                                driver_id=driver_id,
+                                assigned=False
+                            )
+                            db.session.add(new_schedule)
+                            # print(counter_time)
+                            counter_time += timedelta(minutes=30)
+
+                    elif change["change_type"] == "remove":
+                        while counter_time < end_time:
+                            db.session.query(Schedule).filter(Schedule.timeslot == counter_time, Schedule.driver_id == driver_id).delete()
+                            counter_time += timedelta(minutes=30)
+                            # print(counter_time)
+        
+                print("committed")
+                db.session.commit()
+        # print(f"Messages: {messages}")
             
     except Exception as e:
         print(f"Exception: {str(e)}")
+        traceback.print_exc()
+    
+    finally:
+        consumer.close()
+        print("Consumer closed")
 
 def start_kafka_consumer():
-    time.sleep(10)  # Wait for Kafka to start
-    consumer = KafkaConsumer(
-            KAFKA_TOPIC,
-            bootstrap_servers=KAFKA_BROKER_URL,
-            group_id="my-group",
-            auto_offset_reset="earliest",
-            heartbeat_interval_ms=1000,
-    )
-    global messages
+    while True:  # Keep the consumer alive
+        try:
+            print("Starting Kafka consumer...")
+            consumer = KafkaConsumer(
+                KAFKA_TOPIC,
+                bootstrap_servers=KAFKA_BROKER_URL,
+                group_id="my-group",
+                auto_offset_reset="earliest",
+                heartbeat_interval_ms=1000,
+            )
+            consume(consumer)  # Start consuming messages
 
-    consume(consumer)
+        except Exception as e:
+            print(f"Kafka consumer failed: {e}")
+            traceback.print_exc()
+            print("Reconnecting in 10 seconds...")
+            time.sleep(10)  # Wait before reconnecting
 
 
 # Start Kafka consumer in a separate thread

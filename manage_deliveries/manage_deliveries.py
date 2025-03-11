@@ -9,8 +9,6 @@ import amqp_lib
 import json
 import pika
 import sys
-from aiokafka import AIOKafkaProducer
-from kafka_producer import produce_kafka_message
 from kafka import KafkaProducer
 from contextlib import asynccontextmanager
 import asyncio
