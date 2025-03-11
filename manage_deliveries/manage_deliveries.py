@@ -9,8 +9,19 @@ import amqp_lib
 import json
 import pika
 import sys
+from aiokafka import AIOKafkaProducer
+from kafka_producer import produce_kafka_message
+from kafka import KafkaProducer
+from contextlib import asynccontextmanager
+import asyncio
+
+KAFKA_BROKER_URL = "localhost:9092"
+KAFKA_TOPIC = "driver-schedule-updates"
+KAFKA_ADMIN_CLIENT = "flask-admin-client"
 
 app = Flask(__name__)
+
+
 
 CORS(app)
 
@@ -26,6 +37,7 @@ exchange_name = "notification_topic"
 exchange_type = "topic"
 connection = None
 channel = None
+
 def connectAMQP():
     # Use global variables to reduce number of reconnection to RabbitMQ
     # There are better ways but this suffices for our lab
@@ -115,10 +127,37 @@ def processPlaceDeliveryRequest(delivery_request):
             body=notification_message,
             properties=pika.BasicProperties(delivery_mode=2),
         )
+producer = None
+def start_producer():
+    global producer
+    producer = KafkaProducer(
+        bootstrap_servers='localhost:9092')
+    # Get cluster layout and initial topic/partition leadership information
+    print("producer abt to start")
+    # producer.start()
+    # print("producer started")
 
 
+@app.route("/message", methods=['POST'])
+def post_message():
+    global producer
+    try:
+        if producer is None:
+            start_producer()
+        # Get the message from the request
+        message = request.json
+        message = json.dumps(message).encode()
+        
+        if not message:
+            return jsonify({"error": "Invalid message format"}), 400
 
+        producer.send(KAFKA_TOPIC, value=message)
 
+        # Return success response
+        return jsonify({"message": "Message sent"}), 200
+    except Exception as e:
+        # Handle any errors
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/place_delivery_request", methods=['POST'])
 def place_delivery_request():
