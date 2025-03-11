@@ -30,6 +30,7 @@ KAFKA_BROKER_URL = "localhost:9092"
 KAFKA_TOPIC = "driver-schedule-updates"
 
 messages = []
+consumer = None
 
 
 
@@ -55,7 +56,7 @@ class Schedule(db.Model):
         return {
             "id": self.id,
             "driver_id": self.driver_id,
-            "timeslot": self.timeslote,
+            "timeslot": int(self.timeslot.timestamp()),
             "assigned": self.assigned
         }
 
@@ -105,16 +106,19 @@ def consume(consumer):
         print("Consumer closed")
 
 def start_kafka_consumer():
+    global consumer
     while True:  # Keep the consumer alive
+        consumer = None
         try:
             print("Starting Kafka consumer...")
-            consumer = KafkaConsumer(
-                KAFKA_TOPIC,
-                bootstrap_servers=KAFKA_BROKER_URL,
-                group_id="my-group",
-                auto_offset_reset="earliest",
-                heartbeat_interval_ms=1000,
-            )
+            if consumer is None:            
+                consumer = KafkaConsumer(
+                    KAFKA_TOPIC,
+                    bootstrap_servers=KAFKA_BROKER_URL,
+                    group_id="my-group",
+                    auto_offset_reset="earliest",
+                    heartbeat_interval_ms=1000,
+                )
             consume(consumer)  # Start consuming messages
 
         except Exception as e:
@@ -122,6 +126,27 @@ def start_kafka_consumer():
             traceback.print_exc()
             print("Reconnecting in 10 seconds...")
             time.sleep(10)  # Wait before reconnecting
+
+# def start_kafka_consumer():
+#     global consumer
+
+#     try:
+#         print("Starting Kafka consumer...")
+#         if consumer is None:            
+#             consumer = KafkaConsumer(
+#                 KAFKA_TOPIC,
+#                 bootstrap_servers=KAFKA_BROKER_URL,
+#                 group_id="my-group",
+#                 auto_offset_reset="earliest",
+#                 heartbeat_interval_ms=1000,
+#             )
+#         consume(consumer)  # Start consuming messages
+
+#     except Exception as e:
+#         print(f"Kafka consumer failed: {e}")
+#         traceback.print_exc()
+#         print("Reconnecting in 10 seconds...")
+#         time.sleep(10)  # Wait before reconnecting
 
 
 # Start Kafka consumer in a separate thread
@@ -132,13 +157,24 @@ thread.start()
 def create_timeslot_assignment():
 
     data = request.get_json()
-    # it gets 
+    # expected input is 
     # {
         # "desired_timeslot": 1234
     # }
     desired_timeslot = data["desired_timeslot"]
     desired_timeslot = datetime.fromtimestamp(int(desired_timeslot), timezone.utc)
-    assignable_drivers = db.session.scalars(db.select(Schedule).filter(Schedule.timeslot == desired_timeslot)).all()
+    print(desired_timeslot)
+    assignable_drivers = db.session.scalars(db.select(Schedule).filter(Schedule.timeslot == desired_timeslot, Schedule.assigned == False)).all()
+    if assignable_drivers == []:
+        return (
+            jsonify(
+                {
+                    "code": 404,
+                    "message": "No drivers are available for the desired timeslot.",
+                }
+            ),
+            404
+        )
     # pick driver randomly
     assigned_driver = random.choice(assignable_drivers)
     # update status of assigned driver
@@ -164,7 +200,7 @@ def create_timeslot_assignment():
 
 @app.route("/message", methods=["GET"])
 def get_messages():
-    """ Returns the last 10 consumed messages from Kafka. """
+    """ Returns the last consumed messages from Kafka. """
     global messages
     print(messages)
     return jsonify({"messages": messages}), 200

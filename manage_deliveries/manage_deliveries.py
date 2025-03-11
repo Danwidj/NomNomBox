@@ -24,8 +24,9 @@ app = Flask(__name__)
 CORS(app)
 
 user_URL = "http://localhost:5000/user"
-driver_assignment_URL = "http://localhost:5002/driver_assignment"
+schedule_URL = "http://localhost:5002/schedule"
 order_URL = "http://localhost:5001/order"
+delivery_URL = "http://localhost:5003/delivery"
 
 
 # RabbitMQ
@@ -66,9 +67,13 @@ def getUserInfo(user_id):
     print("user_information:", user_information)
     return user_information
 
-def assignDriver(delivery_details):
-    assigned_driver = invoke_http(driver_assignment_URL, json=delivery_details, method='POST')
+def assignDriver(desired_timeslot_details):
+    assigned_driver = invoke_http(schedule_URL, json=desired_timeslot_details, method='POST')
     return assigned_driver
+
+def createDelivery(delivery_details):
+    delivery = invoke_http(delivery_URL, json=delivery_details, method='POST')
+    return delivery
 
 
 def processPlaceDeliveryRequest(delivery_request):
@@ -79,22 +84,34 @@ def processPlaceDeliveryRequest(delivery_request):
 
 
 
-    #2 send the delivery details to driver assignment service
-    delivery_time = delivery_request["delivery_time"]
-    order_id = delivery_request["order_id"]
-    user_id = delivery_request["user_id"]
-    delivery_details = { 
-        "delivery_time" : delivery_time, 
-        "order_id" : order_id, 
-        "user_address" : user_address
+    #2 send the desired timeslot to schedule service
+    # time to be in unix timestamp
+    desired_delivery_time = delivery_request["delivery_time"]
+    desired_delivery_time_request = { 
+        "desired_time": desired_delivery_time,
     };
-    assigned_driver = assignDriver(delivery_details)
 
-    # NEED TO ADD STEP HERE TO POST TO DELIVERY TO GET DELIVERY ID. 
+    assigned_driver_response = assignDriver(desired_delivery_time_request)
+    if assigned_driver_response["code"] != 201:
+        return assigned_driver_response
+    assigned_driver_id = assigned_driver_response["data"]["driver_id"]
+
+    #3 send to delivery service
+    delivery_details = {
+        "order_id": delivery_request["order_id"],
+        "timeslot": desired_delivery_time,
+        "location": user_address,
+        "driver_id": assigned_driver_id,
+    }
+    delivery_response = createDelivery(delivery_details)
+    if delivery_response["code"] != 201:
+        return delivery_response
 
 
-    #3 update the order
-    order = updateOrder(order_id, assigned_driver["delivery_id"])
+    #4 update the order
+    delivery_id = delivery_response["data"]["id"]
+    order_id = delivery_request["order_id"]
+    order = updateOrder(order_id=order_id, delivery_id=delivery_id)
 
 
 
@@ -104,12 +121,13 @@ def processPlaceDeliveryRequest(delivery_request):
         
 
     
-    
+    # 5 inform notification via amqp
+    # time is in unix timestamp    
     #convert order dict to string
     notification_message = {
         "status": delivery_status,
         "email": user_information["email"],
-        "delivery_time": delivery_time,
+        "delivery_time": desired_delivery_time,
         "order_id": order_id,
         "name": user_information["Name"],
     }

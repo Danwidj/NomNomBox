@@ -131,6 +131,7 @@ def create_delivery():
 
     data = request.get_json()
     delivery = Delivery(**data)
+    delivery.timeslot = datetime.fromtimestamp(int(delivery.timeslot), timezone.utc)
 
     try:
         db.session.add(delivery)
