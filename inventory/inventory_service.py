@@ -20,7 +20,10 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Set the upload folder for file uploads
+# Set the upload folder for file uploads
 UPLOAD_FOLDER = os.path.abspath(os.path.join(os.getcwd(), 'inventory', 'uploads'))
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)  # Create the uploads folder if it doesn't exist
 ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -90,7 +93,7 @@ def process_file(file_path):
 # 📌 Helper function to upload data in batches
 def upload_data_batch(meal_kits_data):
     # Reference to Firestore collection 'inventory'
-    inventory_ref = db.collection('inventory')
+    inventory_ref = db.collection('Inventory')
 
     # Start a batch operation
     batch = db.batch()
