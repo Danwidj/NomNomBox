@@ -11,6 +11,7 @@ import time
 from kafka import KafkaConsumer
 from datetime import timedelta
 import traceback
+import redis_utils
 
 app = Flask(__name__)
 
@@ -175,13 +176,35 @@ def create_timeslot_assignment():
             ),
             404
         )
-    # pick driver randomly
-    assigned_driver = random.choice(assignable_drivers)
+    
+    random.shuffle(assignable_drivers)
+    driver_found = False
+    for driver in assignable_drivers:
+        if redis_utils.lock_schedule(driver.id):
+            driver_found = True
+            assigned_driver = driver
+            break
+    
+    
+    if driver_found == False:
+        print("redis lock working")
+        return (
+            jsonify(
+                {
+                    "code": 404,
+                    "message": "No drivers are available for the desired timeslot. Redis lock is working as intended.",
+                }
+            ),
+            404
+        )
+        
+
     # update status of assigned driver
     assigned_driver.assigned = True
     try:
         # commit the changes to the assigned driver to the database
         db.session.commit()
+        redis_utils.unlock_schedule(assigned_driver.id)
     except Exception as e:
         print("Exception:{}".format(str(e)))
         return (
@@ -214,4 +237,4 @@ def get_messages():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True, threaded=True)
