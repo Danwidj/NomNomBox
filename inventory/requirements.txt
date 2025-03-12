@@ -1,0 +1,6 @@
+Flask==2.2.2
+Flask-CORS==3.1.1
+firebase-admin==6.0.0
+pandas==1.5.2
+openpyxl==3.1.2
+werkzeug==2.2.3
