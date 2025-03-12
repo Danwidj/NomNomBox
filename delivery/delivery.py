@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import os
 from dotenv import load_dotenv, dotenv_values
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 app = Flask(__name__)
 
@@ -28,17 +28,15 @@ class Delivery(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, nullable=False)
-    start_time = db.Column(db.TIMESTAMP(timezone=True), nullable=False)
-    end_time = db.Column(db.TIMESTAMP(timezone=True), nullable=False)
+    timeslot = db.Column(db.TIMESTAMP(timezone=True), nullable=False)
     location = db.Column(db.Text, nullable=False)
     driver_id = db.Column(db.Integer, nullable=False)
 
 
 
-    def __init__(self, order_id, start_time, end_time, location, driver_id):
+    def __init__(self, order_id, timeslot, location, driver_id):
         self.order_id = order_id
-        self.start_time = start_time
-        self.end_time = end_time
+        self.timeslot = timeslot
         self.location = location
         self.driver_id = driver_id
 
@@ -47,8 +45,7 @@ class Delivery(db.Model):
         return {
             "id": self.id,
             "order_id": self.order_id,
-            "start_time": self.start_time,
-            "end_time": self.end_time,
+            "timeslot": self.timeslot,
             "driver_id": self.driver_id,
             "location": self.location,
         }
@@ -57,7 +54,7 @@ def get_delivery_by_time(start_time, end_time):
     start_time = datetime.fromtimestamp(int(start_time), timezone.utc)
     end_time = datetime.fromtimestamp(int(end_time), timezone.utc)
     print(start_time, end_time)
-    delivery_list = db.session.scalars(db.select(Delivery).filter(Delivery.start_time >= start_time, Delivery.end_time <= end_time)).all()
+    delivery_list = db.session.scalars(db.select(Delivery).filter(Delivery.timeslot >= start_time, Delivery.timeslot + timedelta(minutes=30) <= end_time)).all()
 
     if len(delivery_list):
         return jsonify(
@@ -134,6 +131,7 @@ def create_delivery():
 
     data = request.get_json()
     delivery = Delivery(**data)
+    delivery.timeslot = datetime.fromtimestamp(int(delivery.timeslot), timezone.utc)
 
     try:
         db.session.add(delivery)

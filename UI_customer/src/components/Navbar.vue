@@ -4,6 +4,7 @@
       <RouterLink to="/">Home</RouterLink>
       <RouterLink to="/Product">Product</RouterLink>
       <RouterLink to="/Cart">Shopping Cart</RouterLink>
+      <RouterLink to="/Chatbot">Chatbot</RouterLink>
       <RouterLink to="/Profile">Profile</RouterLink>
     </div>
   </nav>

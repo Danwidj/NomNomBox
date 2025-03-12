@@ -9,14 +9,24 @@ import amqp_lib
 import json
 import pika
 import sys
+from kafka import KafkaProducer
+from contextlib import asynccontextmanager
+import asyncio
+
+KAFKA_BROKER_URL = "localhost:9092"
+KAFKA_TOPIC = "driver-schedule-updates"
+KAFKA_ADMIN_CLIENT = "flask-admin-client"
 
 app = Flask(__name__)
+
+
 
 CORS(app)
 
 user_URL = "http://localhost:5000/user"
-driver_assignment_URL = "http://localhost:5002/driver_assignment"
+schedule_URL = "http://localhost:5002/schedule"
 order_URL = "http://localhost:5001/order"
+delivery_URL = "http://localhost:5003/delivery"
 
 
 # RabbitMQ
@@ -26,6 +36,7 @@ exchange_name = "notification_topic"
 exchange_type = "topic"
 connection = None
 channel = None
+
 def connectAMQP():
     # Use global variables to reduce number of reconnection to RabbitMQ
     # There are better ways but this suffices for our lab
@@ -56,9 +67,13 @@ def getUserInfo(user_id):
     print("user_information:", user_information)
     return user_information
 
-def assignDriver(delivery_details):
-    assigned_driver = invoke_http(driver_assignment_URL, json=delivery_details, method='POST')
+def assignDriver(desired_timeslot_details):
+    assigned_driver = invoke_http(schedule_URL, json=desired_timeslot_details, method='POST')
     return assigned_driver
+
+def createDelivery(delivery_details):
+    delivery = invoke_http(delivery_URL, json=delivery_details, method='POST')
+    return delivery
 
 
 def processPlaceDeliveryRequest(delivery_request):
@@ -69,21 +84,34 @@ def processPlaceDeliveryRequest(delivery_request):
 
 
 
-    #2 send the delivery details to driver assignment service
-    delivery_time = delivery_request["delivery_time"]
-    order_id = delivery_request["order_id"]
-    user_id = delivery_request["user_id"]
-    delivery_details = { 
-        "delivery_time" : delivery_time, 
-        "order_id" : order_id, 
-        "user_address" : user_address
+    #2 send the desired timeslot to schedule service
+    # time to be in unix timestamp
+    desired_delivery_time = delivery_request["delivery_time"]
+    desired_delivery_time_request = { 
+        "desired_time": desired_delivery_time,
     };
-    assigned_driver = assignDriver(delivery_details)
 
-    
+    assigned_driver_response = assignDriver(desired_delivery_time_request)
+    if assigned_driver_response["code"] != 201:
+        return assigned_driver_response
+    assigned_driver_id = assigned_driver_response["data"]["driver_id"]
 
-    #3 update the order
-    order = updateOrder(order_id, assigned_driver["delivery_id"])
+    #3 send to delivery service
+    delivery_details = {
+        "order_id": delivery_request["order_id"],
+        "timeslot": desired_delivery_time,
+        "location": user_address,
+        "driver_id": assigned_driver_id,
+    }
+    delivery_response = createDelivery(delivery_details)
+    if delivery_response["code"] != 201:
+        return delivery_response
+
+
+    #4 update the order
+    delivery_id = delivery_response["data"]["id"]
+    order_id = delivery_request["order_id"]
+    order = updateOrder(order_id=order_id, delivery_id=delivery_id)
 
 
 
@@ -93,12 +121,13 @@ def processPlaceDeliveryRequest(delivery_request):
         
 
     
-    
+    # 5 inform notification via amqp
+    # time is in unix timestamp    
     #convert order dict to string
     notification_message = {
         "status": delivery_status,
         "email": user_information["email"],
-        "delivery_time": delivery_time,
+        "delivery_time": desired_delivery_time,
         "order_id": order_id,
         "name": user_information["Name"],
     }
@@ -114,10 +143,37 @@ def processPlaceDeliveryRequest(delivery_request):
             body=notification_message,
             properties=pika.BasicProperties(delivery_mode=2),
         )
+producer = None
+def start_producer():
+    global producer
+    producer = KafkaProducer(
+        bootstrap_servers='localhost:9092')
+    # Get cluster layout and initial topic/partition leadership information
+    print("producer abt to start")
+    # producer.start()
+    # print("producer started")
 
 
+@app.route("/message", methods=['POST'])
+def post_message():
+    global producer
+    try:
+        if producer is None:
+            start_producer()
+        # Get the message from the request
+        message = request.json
+        message = json.dumps(message).encode()
+        
+        if not message:
+            return jsonify({"error": "Invalid message format"}), 400
 
+        producer.send(KAFKA_TOPIC, value=message)
 
+        # Return success response
+        return jsonify({"message": "Message sent"}), 200
+    except Exception as e:
+        # Handle any errors
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/place_delivery_request", methods=['POST'])
 def place_delivery_request():
