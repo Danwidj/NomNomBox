@@ -15,13 +15,21 @@
           </select>
         </div>
 
+        <!-- Price Range Dropdown -->
         <div class="filter-group">
           <label>Price Range:</label>
-          <div class="price-range">
-            <input v-model.number="minPrice" type="number" placeholder="Min Price" />
-            <input v-model.number="maxPrice" type="number" placeholder="Max Price" />
-          </div>
+          <select v-model="priceFilter">
+            <option value="">All Prices</option>
+            <option value="lessThan5">Less than 5</option>
+            <option value="5to10">5-10</option>
+            <option value="10to15">10-15</option>
+            <option value="15to20">15-20</option>
+            <option value="above25">Above 20</option>
+          </select>
         </div>
+
+        <!-- Clear Filters Button -->
+        <button @click="clearFilters" class="clear-filters">Clear Filters</button>
       </aside>
 
       <!-- Right Content: Search/Sort and Products Grid -->
@@ -73,8 +81,7 @@ export default {
       searchTerm: "",
       sortOption: "default",
       selectedTags: [], // Stores selected dietary tags
-      minPrice: null,
-      maxPrice: null,
+      priceFilter: "",  // New drop-down filter for price range
       products: [], // Initially empty, filled from API
       loading: true
     };
@@ -94,11 +101,19 @@ export default {
           product.name.toLowerCase().includes(this.searchTerm.toLowerCase())
         );
 
-      // Price Filter
-      if (this.minPrice !== null && this.minPrice !== "")
-        result = result.filter(product => product.price >= this.minPrice);
-      if (this.maxPrice !== null && this.maxPrice !== "")
-        result = result.filter(product => product.price <= this.maxPrice);
+      // Price Filter using the dropdown selection
+      if (this.priceFilter) {
+        if (this.priceFilter === "lessThan5")
+          result = result.filter(product => product.price < 5);
+        else if (this.priceFilter === "5to10")
+          result = result.filter(product => product.price >= 5 && product.price <= 10);
+        else if (this.priceFilter === "10to15")
+          result = result.filter(product => product.price >= 10 && product.price <= 15);
+        else if (this.priceFilter === "15to20")
+          result = result.filter(product => product.price >= 15 && product.price <= 20);
+        else if (this.priceFilter === "above25")
+          result = result.filter(product => product.price > 20);
+      }
 
       // Dietary Tags Filter (show if product has at least one selected tag)
       if (this.selectedTags.length > 0) {
@@ -147,6 +162,10 @@ export default {
 
       sessionStorage.setItem("shoppingCart", JSON.stringify(cart));
       alert(`${product.name} added to cart!`);
+    },
+    clearFilters() {
+      this.selectedTags = [];
+      this.priceFilter = "";
     }
   }
 };
@@ -167,7 +186,7 @@ export default {
 
 /* Filters Sidebar */
 .filters {
-  width: 200px;
+  width: 300px;
   padding: 15px;
   border-radius: 8px;
   background: #f9f9f9;
@@ -178,12 +197,23 @@ export default {
   margin-bottom: 15px;
 }
 
-.multi-select {
+.multi-select,
+.filters select {
   width: 100%;
   padding: 6px;
   font-size: 0.9rem;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+/* Clear Filters Button Styling */
+.clear-filters {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 4px;
+  background: #ccc ;
+  cursor: pointer;
 }
 
 /* Dietary Tags inside Product Card */
