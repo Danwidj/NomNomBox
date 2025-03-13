@@ -58,7 +58,7 @@
                 >★</span>
               </div>
               <p class="product-price">$ {{ product.price.toFixed(2) }}</p>
-              <button class="add-to-cart">Add to Cart</button>
+              <button class="add-to-cart" @click="addToCart(product)">Add to Cart</button>
             </div>
           </div>
         </div>
@@ -123,6 +123,19 @@ export default {
       this.minRating = 0;
       this.searchTerm = '';
       this.sortOption = 'default';
+    },
+    addToCart(product) {
+      let cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
+      
+      let existingItem = cart.find(item => item.id === product.id);
+      if (existingItem) {
+        existingItem.quantity++;
+      } else {
+        cart.push({ ...product, quantity: 1 });
+      }
+
+      sessionStorage.setItem("shoppingCart", JSON.stringify(cart));
+      alert(`${product.name} added to cart!`);
     }
   }
 };

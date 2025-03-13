@@ -1,0 +1,15 @@
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get the path of serviceAccountKey.json from the environment variable
+cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "serviceAccountKey.json")
+
+# Initialize Firebase
+cred = credentials.Certificate(cred_path)
+firebase_admin.initialize_app(cred)
+db = firestore.client()

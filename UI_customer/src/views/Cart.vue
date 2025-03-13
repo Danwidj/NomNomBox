@@ -2,15 +2,49 @@
   <div class="page-container">
     <section class="cart-section">
       <h2>Shopping Cart</h2>
+
+      <!-- Empty Cart Message -->
       <div v-if="cart.length === 0" class="empty-cart">
         <p>Your shopping cart is empty.</p>
       </div>
-      <div v-else class="cart-items">
-        <div v-for="item in cart" :key="item.id" class="cart-item">
-          <p><strong>{{ item.name }}</strong></p>
-          <p>Price: ${{ item.price.toFixed(2) }}</p>
-          <p>Quantity: {{ item.quantity }}</p>
-          <button class="btn" @click="removeItem(item.id)">Remove</button>
+
+      <!-- Cart Content -->
+      <div v-else class="cart-content">
+        <!-- Cart Items List -->
+        <div class="cart-items">
+          <div v-for="item in cart" :key="item.id" class="cart-item">
+            <img :src="item.image" :alt="item.name" class="cart-item-image" />
+            
+            <div class="cart-item-details">
+              <h3 class="cart-item-title">{{ item.name }}</h3>
+              <p class="cart-item-description">{{ item.description }}</p>
+              <p class="cart-item-price">$ {{ item.price.toFixed(2) }}</p>
+
+              <div class="quantity-controls">
+                <button class="btn quantity-btn" @click="decreaseQuantity(item)">−</button>
+                <span class="quantity">{{ item.quantity }}</span>
+                <button class="btn quantity-btn" @click="increaseQuantity(item)">+</button>
+              </div>
+
+              <p class="cart-item-total">
+                Subtotal: <strong>$ {{ (item.price * item.quantity).toFixed(2) }}</strong>
+              </p>
+            </div>
+
+            <button class="btn remove-btn" @click="removeItem(item.id)">Remove</button>
+          </div>
+        </div>
+
+        <!-- Order Summary -->
+        <div class="cart-summary">
+          <h3>Order Summary</h3>
+          <div class="summary-item">
+            <span>Total Items:</span> <span>{{ totalItems }}</span>
+          </div>
+          <div class="summary-item">
+            <span>Total Price:</span> <span class="total-price">$ {{ totalPrice.toFixed(2) }}</span>
+          </div>
+          <button class="checkout-btn">Proceed to Checkout</button>
         </div>
       </div>
     </section>
@@ -22,81 +56,228 @@ export default {
   name: "CartPage",
   data() {
     return {
-      cart: [
-        { id: 1, name: "Grilled Chicken Meal", price: 12.99, quantity: 1 },
-        { id: 2, name: "Vegan Buddha Bowl", price: 10.99, quantity: 2 }
-      ],
+      cart: []
     };
   },
+  computed: {
+    totalItems() {
+      return this.cart.reduce((total, item) => total + item.quantity, 0);
+    },
+    totalPrice() {
+      return this.cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    }
+  },
+  created() {
+    this.loadCart();
+  },
   methods: {
+    loadCart() {
+      this.cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
+    },
+    saveCart() {
+      sessionStorage.setItem("shoppingCart", JSON.stringify(this.cart));
+    },
     removeItem(itemId) {
       this.cart = this.cart.filter(item => item.id !== itemId);
+      this.saveCart();
+    },
+    increaseQuantity(item) {
+      item.quantity++;
+      this.saveCart();
+    },
+    decreaseQuantity(item) {
+      if (item.quantity > 1) {
+        item.quantity--;
+      } else {
+        this.removeItem(item.id);
+      }
+      this.saveCart();
     }
   }
 };
 </script>
 
 <style scoped>
-/* Ensures the page fills the screen & pushes the footer down */
+/* General Styling */
 .page-container {
   display: flex;
-  flex-direction: column;
-  min-height: 100vh; /* Full screen height */
-  flex-grow: 1;
+  justify-content: center;
+  padding: 20px;
+  min-height: 100vh;
+  background: #f7f7f7;
 }
 
 /* Shopping Cart Section */
 .cart-section {
-  text-align: center;
-  padding: 60px 5%;
+  width: 90%;
+  max-width: 1000px;
   background: white;
-  margin: 20px auto;
+  padding: 30px;
   border-radius: 12px;
-  box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.1);
-  width: 95%;
-  max-width: 800px;
-  flex-grow: 1;
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
 }
 
-/* Empty Cart Message */
+/* Empty Cart */
 .empty-cart {
   font-size: 1.2rem;
   color: #777;
   padding: 20px;
 }
 
+/* Cart Content */
+.cart-content {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
 /* Cart Items */
 .cart-items {
+  flex: 2;
   display: flex;
   flex-direction: column;
   gap: 15px;
-  align-items: center;
 }
 
+/* Cart Item */
 .cart-item {
-  background: #f9f9f9;
+  display: flex;
+  align-items: center;
+  background: white;
   padding: 15px;
   border-radius: 8px;
-  width: 80%;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.08);
+  transition: 0.3s;
 }
 
-/* Remove Button */
-.btn {
-  background-color: #ff6600;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  text-decoration: none;
-  display: inline-block;
-  margin-top: 10px;
+.cart-item:hover {
+  transform: scale(1.02);
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.12);
+}
+
+/* Product Image */
+.cart-item-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-right: 15px;
+}
+
+/* Product Details */
+.cart-item-details {
+  flex: 1;
+  text-align: left;
+}
+
+.cart-item-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.cart-item-description {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.cart-item-price {
   font-size: 1rem;
-  border: none;
-  cursor: pointer;
-  transition: background 0.3s;
+  font-weight: bold;
+  color: #ff6600;
 }
 
-.btn:hover {
-  background-color: #e65c00;
+.cart-item-total {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+/* Quantity Controls */
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.quantity {
+  font-size: 1rem;
+  font-weight: bold;
+  margin: 0 10px;
+}
+
+.quantity-btn {
+  background: #ff9900;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0 5px;
+  transition: 0.3s;
+}
+
+.quantity-btn:hover {
+  background: #e68a00;
+}
+
+/* Remove Button (Always Red) */
+.remove-btn {
+  background: #ff4d4d;
+  padding: 8px 14px;
+  transition: 0.3s;
+  border: none;
+}
+
+.remove-btn:hover {
+  background: #e60000;
+  transform: scale(1.1);
+}
+
+/* Order Summary */
+.cart-summary {
+  flex: 1;
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.cart-summary h3 {
+  font-size: 1.3rem;
+  margin-bottom: 15px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.total-price {
+  font-weight: bold;
+  color: #ff6600;
+}
+
+/* Checkout Button */
+.checkout-btn {
+  background: #009900;
+  padding: 14px;
+  font-size: 1rem;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.3s;
+  border: none;
+}
+
+.checkout-btn:hover {
+  background: #007700;
+  transform: scale(1.05);
 }
 </style>
