@@ -4,38 +4,31 @@
       <!-- Left Sidebar: Filters -->
       <aside class="filters">
         <h2>Filters</h2>
+
+        <!-- Dietary Tags Multi-Select Dropdown -->
         <div class="filter-group">
-          <label for="category">Category:</label>
-          <select id="category" v-model="selectedCategory">
-            <option value="">All Categories</option>
-            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          <label>Dietary Tags:</label>
+          <select multiple v-model="selectedTags" class="multi-select">
+            <option v-for="tag in uniqueDietaryTags" :key="tag" :value="tag">
+              {{ tag }}
+            </option>
           </select>
         </div>
+
         <div class="filter-group">
           <label>Price Range:</label>
           <div class="price-range">
-            <input v-model.number="minPrice" type="number" placeholder="Min" />
-            <input v-model.number="maxPrice" type="number" placeholder="Max" />
+            <input v-model.number="minPrice" type="number" placeholder="Min Price" />
+            <input v-model.number="maxPrice" type="number" placeholder="Max Price" />
           </div>
         </div>
-        <div class="filter-group">
-          <label for="rating">Rating:</label>
-          <select id="rating" v-model.number="minRating">
-            <option value="0">All</option>
-            <option value="1">1+ Stars</option>
-            <option value="2">2+ Stars</option>
-            <option value="3">3+ Stars</option>
-            <option value="4">4+ Stars</option>
-          </select>
-        </div>
-        <button @click="resetFilters">Reset Filters</button>
       </aside>
 
       <!-- Right Content: Search/Sort and Products Grid -->
       <main class="content">
         <div class="top-bar">
           <div class="search-sort">
-            <input v-model="searchTerm" type="text" placeholder="Search products..." />
+            <input v-model="searchTerm" type="text" placeholder="Search meal kits..." />
             <select v-model="sortOption">
               <option value="default">Sort by</option>
               <option value="priceLowToHigh">Price: Low to High</option>
@@ -43,20 +36,25 @@
             </select>
           </div>
         </div>
-        <div class="grid-container">
+
+        <div v-if="loading" class="loading">Loading products...</div>
+        <div v-else-if="filteredProducts.length === 0" class="no-results">
+          No products match your filters.
+        </div>
+        <div v-else class="grid-container">
           <div v-for="product in filteredProducts" :key="product.id" class="product-card">
-            <img :src="product.image" :alt="product.name" class="product-image" />
+            <img :src="product.imageURL" :alt="product.name" class="product-image" />
             <div class="product-info">
               <h3 class="product-title">{{ product.name }}</h3>
               <p class="product-description">{{ product.description }}</p>
-              <div class="product-rating">
-                <span
-                  v-for="n in 5"
-                  :key="n"
-                  class="star"
-                  :class="{ filled: n <= product.rating }"
-                >★</span>
+
+              <!-- Dietary Tags Display -->
+              <div class="dietary-tags-container">
+                <span v-for="tag in product.dietaryTags" :key="tag" class="dietary-tag">
+                  {{ tag }}
+                </span>
               </div>
+
               <p class="product-price">$ {{ product.price.toFixed(2) }}</p>
               <button class="add-to-cart" @click="addToCart(product)">Add to Cart</button>
             </div>
@@ -69,65 +67,78 @@
 
 <script>
 export default {
-  name: 'ProductPage',
+  name: "ProductPage",
   data() {
     return {
-      searchTerm: '',
-      sortOption: 'default',
-      selectedCategory: '',
+      searchTerm: "",
+      sortOption: "default",
+      selectedTags: [], // Stores selected dietary tags
       minPrice: null,
       maxPrice: null,
-      minRating: 0,
-      products: [
-        { id: 1, name: 'Italian Pasta Kit', description: 'Enjoy authentic Italian flavors with our pasta kit.', price: 25.0, rating: 4, category: 'Italian', image: 'pasta.jpg' },
-        { id: 2, name: 'Mexican Taco Kit', description: 'Spice up your dinner with our taco kit.', price: 20.0, rating: 5, category: 'Mexican', image: 'taco.jpg' },
-        { id: 3, name: 'Sushi Making Kit', description: 'Everything you need for a sushi night at home.', price: 30.0, rating: 4, category: 'Japanese', image: 'sushi.jpg' },
-        { id: 4, name: 'Indian Curry Kit', description: 'A complete kit to create rich, flavorful curries.', price: 28.0, rating: 4, category: 'Indian', image: 'curry.jpg' },
-        { id: 5, name: 'Mediterranean Mezze Kit', description: 'Enjoy a variety of dips and appetizers Mediterranean style.', price: 32.0, rating: 5, category: 'Mediterranean', image: 'mezze.jpg' },
-        { id: 6, name: 'BBQ Grill Kit', description: 'All the essentials for a perfect BBQ experience.', price: 35.0, rating: 3, category: 'American', image: 'bbq.jpg' },
-        { id: 7, name: 'Vegan Delight Kit', description: 'Delicious and healthy vegan meal kit options.', price: 22.0, rating: 4, category: 'Vegan', image: 'vegan.jpg' },
-        { id: 8, name: 'French Bistro Kit', description: 'Create classic French bistro dishes in your own kitchen.', price: 40.0, rating: 5, category: 'French', image: 'french.jpg' },
-        { id: 9, name: 'Thai Curry Kit', description: 'Experience the bold flavors of Thai cuisine with this kit.', price: 27.0, rating: 4, category: 'Thai', image: 'thai.jpg' },
-        { id: 10, name: 'Healthy Salad Kit', description: 'Fresh ingredients for a nutritious and tasty salad.', price: 18.0, rating: 3, category: 'Healthy', image: 'salad.jpg' }
-      ]
+      products: [], // Initially empty, filled from API
+      loading: true
     };
   },
   computed: {
-    categories() {
-      return [...new Set(this.products.map(product => product.category))];
+    uniqueDietaryTags() {
+      // Get all unique dietary tags from all products
+      const allTags = this.products.flatMap(product => product.dietaryTags || []);
+      return [...new Set(allTags)];
     },
     filteredProducts() {
       let result = this.products;
-      if (this.searchTerm.trim() !== '')
-        result = result.filter(product => product.name.toLowerCase().includes(this.searchTerm.toLowerCase()));
-      if (this.selectedCategory)
-        result = result.filter(product => product.category === this.selectedCategory);
-      if (this.minPrice !== null && this.minPrice !== '')
+
+      // Search Filter
+      if (this.searchTerm.trim() !== "")
+        result = result.filter(product =>
+          product.name.toLowerCase().includes(this.searchTerm.toLowerCase())
+        );
+
+      // Price Filter
+      if (this.minPrice !== null && this.minPrice !== "")
         result = result.filter(product => product.price >= this.minPrice);
-      if (this.maxPrice !== null && this.maxPrice !== '')
+      if (this.maxPrice !== null && this.maxPrice !== "")
         result = result.filter(product => product.price <= this.maxPrice);
-      if (this.minRating > 0)
-        result = result.filter(product => product.rating >= this.minRating);
-      if (this.sortOption === 'priceLowToHigh')
+
+      // Dietary Tags Filter (show if product has at least one selected tag)
+      if (this.selectedTags.length > 0) {
+        result = result.filter(product =>
+          product.dietaryTags.some(tag => this.selectedTags.includes(tag))
+        );
+      }
+
+      // Sorting
+      if (this.sortOption === "priceLowToHigh")
         result = result.slice().sort((a, b) => a.price - b.price);
-      else if (this.sortOption === 'priceHighToLow')
+      else if (this.sortOption === "priceHighToLow")
         result = result.slice().sort((a, b) => b.price - a.price);
+
       return result;
     }
   },
+  created() {
+    this.fetchProducts();
+  },
   methods: {
-    resetFilters() {
-      this.selectedCategory = '';
-      this.minPrice = null;
-      this.maxPrice = null;
-      this.minRating = 0;
-      this.searchTerm = '';
-      this.sortOption = 'default';
+    async fetchProducts() {
+      try {
+        const response = await fetch("http://127.0.0.1:5002/inventory"); // Fetch from Inventory API
+        const data = await response.json();
+        if (data.code === 200) {
+          this.products = data.data; // Populate products from API response
+        } else {
+          console.error("No products available");
+        }
+      } catch (error) {
+        console.error("Error fetching inventory:", error);
+      } finally {
+        this.loading = false;
+      }
     },
     addToCart(product) {
       let cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
-      
       let existingItem = cart.find(item => item.id === product.id);
+
       if (existingItem) {
         existingItem.quantity++;
       } else {
@@ -142,139 +153,117 @@ export default {
 </script>
 
 <style scoped>
+/* General Page Styling */
 .product-page {
   font-family: Arial, sans-serif;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 10px;
+  padding: 20px;
 }
 .page-layout {
   display: flex;
-  gap: 10px;
+  gap: 15px;
 }
-/* Left Sidebar fixed to 150px with smaller padding */
+
+/* Filters Sidebar */
 .filters {
-  width: 150px;
-  border: 1px solid #ddd;
-  padding: 10px;
-  border-radius: 4px;
-  height: fit-content;
+  width: 200px;
+  padding: 15px;
+  border-radius: 8px;
+  background: #f9f9f9;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }
-.filters h2 {
-  margin-top: 0;
-  font-size: 1.1rem;
-}
+
 .filter-group {
-  margin-bottom: 10px;
-  display: flex;
-  flex-direction: column;
+  margin-bottom: 15px;
 }
-.filter-group label {
-  margin-bottom: 4px;
-  font-weight: bold;
-  font-size: 0.9rem;
-}
-.filter-group input,
-.filter-group select {
+
+.multi-select {
   width: 100%;
-  padding: 4px;
+  padding: 6px;
   font-size: 0.9rem;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
-.price-range {
+
+/* Dietary Tags inside Product Card */
+.dietary-tags-container {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
 }
+
+.dietary-tag {
+  background: #ffcc80;
+  color: #333;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
 /* Right Content */
 .content {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
+
 .top-bar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
+
 .search-sort {
   display: flex;
-  gap: 6px;
+  gap: 10px;
   align-items: center;
 }
+
 .search-sort input,
 .search-sort select {
-  padding: 6px;
+  padding: 8px;
   font-size: 0.9rem;
-  border: 1px solid #ccc;
   border-radius: 4px;
+  border: 1px solid #ccc;
 }
-/* Products Grid: 4 per row with smaller gap */
+
+/* Product Grid */
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
 }
+
+/* Product Card */
 .product-card {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: box-shadow 0.3s ease;
+  border-radius: 8px;
+  padding: 15px;
+  background: white;
+  transition: 0.3s;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
 }
+
 .product-card:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: scale(1.03);
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.15);
 }
-.product-image {
-  width: 100%;
-  height: auto;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 5px;
-}
-.product-info {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-}
-.product-title {
-  font-size: 1rem;
-  margin: 5px 0;
-}
-.product-description {
-  font-size: 0.8rem;
-  color: #555;
-  flex-grow: 1;
-}
-.product-rating {
-  margin: 5px 0;
-}
-.star {
-  color: #ccc;
-  font-size: 0.8rem;
-}
-.star.filled {
-  color: #f5a623;
-}
-.product-price {
-  font-size: 1rem;
-  font-weight: bold;
-  margin-bottom: 5px;
-}
+
+/* Add to Cart Button */
 .add-to-cart {
-  background-color: #ff9900;
+  background: #ff9900;
   border: none;
-  color: #fff;
-  padding: 6px;
-  font-size: 0.9rem;
-  border-radius: 4px;
+  color: white;
+  padding: 8px 14px;
+  font-size: 1rem;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: 0.3s;
 }
+
 .add-to-cart:hover {
-  background-color: #e68a00;
+  background: #e68a00;
 }
 </style>
