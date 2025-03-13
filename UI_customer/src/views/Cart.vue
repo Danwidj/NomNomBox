@@ -23,9 +23,17 @@
               <div class="quantity-controls">
                 <button class="btn quantity-btn" @click="decreaseQuantity(item)">−</button>
                 <span class="quantity">{{ item.quantity }}</span>
-                <button class="btn quantity-btn" @click="increaseQuantity(item)">+</button>
-              </div>
-
+                <button 
+                  class="btn quantity-btn" 
+                  @click="increaseQuantity(item)" 
+                  :disabled="item.quantity >= (stockData[item.id] || item.stock)"
+                >
+                  +
+                </button>             
+                 </div>
+              <p class="stock-info">
+  Available: {{ stockData[item.id] || item.stock }} in stock
+</p><br>
               <p class="cart-item-total">
                 Subtotal: <strong>$ {{ (item.price * item.quantity).toFixed(2) }}</strong>
               </p>
@@ -49,6 +57,9 @@
       </div>
     </section>
   </div>
+  <div class="customer-id">
+  <p>Customer ID: <strong>{{ customerId }}</strong></p>
+</div>
 </template>
 
 <script>
@@ -56,7 +67,11 @@ export default {
   name: "CartPage",
   data() {
     return {
-      cart: []
+      cart: [],
+      stockData: {}, // To store stock levels from Firestore
+
+      customerId: "1"//change to null
+
     };
   },
   computed: {
@@ -69,22 +84,62 @@ export default {
   },
   created() {
     this.loadCart();
+    this.loadCustomerId();
+
   },
   methods: {
-    loadCart() {
-      this.cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
-    },
+   async loadCart() {
+  this.cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
+
+  try {
+    const response = await fetch("http://127.0.0.1:5002/inventory"); // Inventory API
+    const data = await response.json();
+
+    if (data.code === 200) {
+      this.stockData = data.data.reduce((acc, item) => {
+        acc[item.id] = item.numAvailable; // Use correct field name
+        return acc;
+      }, {});
+    } else {
+      console.error("No stock data available");
+    }
+  } catch (error) {
+    console.error("Error fetching stock data:", error);
+  }
+},
     saveCart() {
       sessionStorage.setItem("shoppingCart", JSON.stringify(this.cart));
+    },
+    loadCustomerId() {
+    this.customerId = sessionStorage.getItem("customerId") || "1"; //change to null
+  },
+    saveCustomerId(id) {
+      sessionStorage.setItem("customerId", id);
+      this.customerId = id;
     },
     removeItem(itemId) {
       this.cart = this.cart.filter(item => item.id !== itemId);
       this.saveCart();
     },
-    increaseQuantity(item) {
-      item.quantity++;
-      this.saveCart();
-    },
+increaseQuantity(item) {
+  console.log("Stock Data:", this.stockData); // Debugging
+  console.log("Checking stock for item:", item.id); // Debugging
+
+  const availableStock = this.stockData[item.id] ?? item.numAvailable ?? 0; // Use numAvailable
+
+  if (availableStock === 0) {
+    console.error(`Stock not found for item ID: ${item.id}`);
+    alert("Stock information is unavailable. Please try again later.");
+    return;
+  }
+
+  if (item.quantity < availableStock) {
+    item.quantity++;
+    this.saveCart();
+  } else {
+    alert(`Only ${availableStock} left in stock!`); // Notify user with correct stock
+  }
+},
     decreaseQuantity(item) {
       if (item.quantity > 1) {
         item.quantity--;
@@ -279,5 +334,10 @@ export default {
 .checkout-btn:hover {
   background: #007700;
   transform: scale(1.05);
+}
+.stock-info {
+  font-size: 0.9rem;
+  color: #ff0000;
+  font-weight: bold;
 }
 </style>
