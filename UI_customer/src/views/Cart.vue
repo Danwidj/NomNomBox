@@ -52,7 +52,7 @@
           <div class="summary-item">
             <span>Total Price:</span> <span class="total-price">$ {{ totalPrice.toFixed(2) }}</span>
           </div>
-          <button class="checkout-btn">Proceed to Checkout</button>
+        <button class="checkout-btn" @click="proceedToCheckout">Proceed to Checkout</button>
         </div>
       </div>
     </section>
@@ -147,7 +147,25 @@ increaseQuantity(item) {
         this.removeItem(item.id);
       }
       this.saveCart();
-    }
+    },
+    proceedToCheckout() {
+    const checkoutData = {
+        customerId: this.customerId,
+        items: this.cart.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity
+        })),
+        totalPrice: this.totalPrice
+    };
+
+    console.log("Checkout Data:", checkoutData);
+
+    // Instead of sending it to an API, just log it for now
+    alert("Check console for checkout data");
+}
+
   }
 };
 </script>
