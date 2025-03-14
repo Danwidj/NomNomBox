@@ -28,3 +28,9 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Ignore Firebase credentials (Sensitive file)
+customer/customer-serviceAccountKey.json
+
+# Ignore environment files
+customer/.env

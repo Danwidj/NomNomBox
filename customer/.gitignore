@@ -9,7 +9,11 @@ venv/
 env/
 
 # Ignore Firebase credentials (Sensitive file)
-customer/serviceAccountKey.json
+customer/customer-serviceAccountKey.json
+
+# Ignore environment files
+customer/.env
+
 
 # Ignore environment variable files
 .env
