@@ -68,8 +68,7 @@ const response = await fetch('/api/chatbot', {
 <template>
   <div class="chat-container">
     <div class="chat-header">
-      <h1>Customer Support Chat</h1>
-      <p>We typically reply within a few seconds</p>
+      <h1>Reccomendation</h1>
     </div>
     
     <div class="chat-messages" ref="messageContainer">
