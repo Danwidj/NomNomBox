@@ -1,65 +1,79 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { fetchConvo, sendPrompt } from '@/lib/chatService'
 
 const messages = ref([
   {
-    text: "Hello! How can I help you today?",
+    text: "Hello! How can I help you today?", // Initial bot message
     sender: 'bot',
     timestamp: new Date().toLocaleTimeString()
   }
 ])
 const newMessage = ref('')
 const isLoading = ref(false)
+const uid = 'D2lgMOKmVFvRLFBUiNa1'; // Replace with actual user ID
+
+// Fetch messages on component mount
+onMounted(async () => {
+  await loadMessages(); // Load messages when component mounts
+});
+
+// Function to load messages
+const loadMessages = async () => {
+  try {
+    const data = await fetchConvo(uid);
+
+    for (let i = 0; i < data.length; i++) {
+      const msg = data[i];
+      messages.value.push({
+        text: msg.prompt,
+        sender: 'user',
+        timestamp: new Date().toLocaleTimeString()
+      });
+      messages.value.push({
+        text: msg.response,
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString()
+      });
+    }
+  } catch (error) {
+    console.error('Failed to load messages:', error);
+  }
+};
 
 const sendMessage = async () => {
   if (newMessage.value.trim()) {
     // Add user message
-    messages.value.push({
+    const userMessage = {
       text: newMessage.value,
       sender: 'user',
       timestamp: new Date().toLocaleTimeString()
-    })
-    
-    // Store and clear input
-    const userMessage = newMessage.value
-    newMessage.value = ''
-    
-    // Show loading state
-    isLoading.value = true
-    
-    try {
-const response = await fetch('/api/chatbot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          // You can add context or history here if needed
-          history: messages.value.map(msg => ({
-            role: msg.sender === 'user' ? 'user' : 'assistant',
-            content: msg.text
-          }))
-        })
-      })
+    };
+    messages.value.push(userMessage);
 
-      const data = await response.json()
-      
-      // Add bot response
-      messages.value.push({
-        text: data.response,
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString()
-      })
+    newMessage.value = '';
+    isLoading.value = true;
+
+    try {
+      // Use sendPrompt to send the user's message
+      const data = await sendPrompt(uid, userMessage.text);
+      console.log(data)
+
+      const botMessage = {
+      text: data.response, // Assuming the response contains the bot's reply
+      sender: 'bot',
+      timestamp: new Date().toLocaleTimeString()
+      }
+      messages.value.push(botMessage);
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error:', error);
       messages.value.push({
         text: "I apologize, but I'm having trouble connecting right now. Please try again later.",
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString()
-      })
+      });
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
 }
@@ -70,11 +84,9 @@ const response = await fetch('/api/chatbot', {
     <div class="chat-header">
       <h1>Reccomendation</h1>
     </div>
-    
+
     <div class="chat-messages" ref="messageContainer">
-      <div v-for="(message, index) in messages" 
-           :key="index" 
-           :class="['message', message.sender]">
+      <div v-for="(message, index) in messages" :key="index" :class="['message', message.sender]">
         <div class="message-content">
           {{ message.text }}
         </div>
@@ -92,13 +104,8 @@ const response = await fetch('/api/chatbot', {
     </div>
 
     <div class="chat-input">
-      <input 
-        v-model="newMessage"
-        @keyup.enter="sendMessage"
-        placeholder="Type your message here..."
-        type="text"
-        :disabled="isLoading"
-      />
+      <input v-model="newMessage" @keyup.enter="sendMessage" placeholder="Type your message here..." type="text"
+        :disabled="isLoading" />
       <button @click="sendMessage" :disabled="isLoading">
         Send
       </button>
@@ -108,13 +115,17 @@ const response = await fetch('/api/chatbot', {
 
 <style scoped>
 .chat-container {
-  width: 60vw;          /* 60% of viewport width */
-  max-width: 1200px;    /* Cap the width on large screens */
-  height: 80vh;         /* 80% of viewport height */
-  margin: 0 auto;       /* Not strictly needed if parent is flex + center */
+  width: 60vw;
+  /* 60% of viewport width */
+  max-width: 1200px;
+  /* Cap the width on large screens */
+  height: 80vh;
+  /* 80% of viewport height */
+  margin: 0 auto;
+  /* Not strictly needed if parent is flex + center */
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -248,15 +259,20 @@ button:active {
 }
 
 @keyframes bounce {
-  0%, 60%, 100% {
+
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
   }
+
   30% {
     transform: translateY(-4px);
   }
 }
 
-input:disabled, button:disabled {
+input:disabled,
+button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
