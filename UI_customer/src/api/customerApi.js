@@ -1,15 +1,26 @@
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:5002";  // Customer Microservice URL
+const API_BASE_URL = "http://127.0.0.1:5002"; // Change if deployed
 
-//Register Customer
-export const registerCustomer = async (userData) => {
-  return axios.post(`${API_URL}/register`, userData);
-};
+export default {
+  async register(userData) {
+    return axios.post(`${API_BASE_URL}/register`, userData);
+  },
 
-//Get Customer Data (Requires Auth Token)
-export const getCustomer = async (customerId, token) => {
-  return axios.get(`${API_URL}/customer/${customerId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  async login(credentials) {
+    return axios.post(`${API_BASE_URL}/login`, credentials);
+  },
+
+  async googleLogin(token) {
+    return axios.post(`${API_BASE_URL}/register`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+      withCredentials: true,
+    });
+  },
+
+  async getCustomerDetails(customerId, token) {
+    return axios.get(`${API_BASE_URL}/customer/${customerId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
 };

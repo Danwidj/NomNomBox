@@ -1,28 +1,41 @@
 <template>
   <nav>
-    <div class="flex">
+    <div class="nav-links">
       <RouterLink to="/">Home</RouterLink>
       <RouterLink to="/Product">Product</RouterLink>
       <RouterLink to="/Cart">Shopping Cart</RouterLink>
       <RouterLink to="/Chatbot">Chatbot</RouterLink>
       <RouterLink to="/Profile">Profile</RouterLink>
     </div>
-  </nav>
 
+    <!-- Login/Logout Button -->
+    <button @click="handleAuth" class="auth-button">
+      {{ isAuthenticated ? "Logout" : "Login" }}
+    </button>
+  </nav>
 </template>
 
-<script setup>
-import { RouterLink } from 'vue-router'
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu'
+<script>
+import { computed } from "vue";
+import { useRouter } from "vue-router";
+import { isAuthenticated, logout } from "@/stores/auth"; // Import global auth store
 
+export default {
+  setup() {
+    const router = useRouter();
+
+    const handleAuth = () => {
+      if (isAuthenticated.value) {
+        logout();
+        router.push("/login"); // Redirect to login on logout
+      } else {
+        router.push("/login"); // Redirect to login on button click
+      }
+    };
+
+    return { isAuthenticated, handleAuth };
+  },
+};
 </script>
 
 <style scoped>
@@ -30,7 +43,8 @@ nav {
   width: 100%;
   font-size: 14px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   background-color: #000000;
   padding: 1rem;
   position: fixed;
@@ -40,8 +54,14 @@ nav {
   z-index: 1000;
 }
 
+.nav-links {
+  display: flex;
+  gap: 20px;
+}
+
 nav a {
-  display: inline-block;
+  color: white;
+  text-decoration: none;
   padding: 0 1rem;
   border-left: 1px solid #ddd;
 }
@@ -52,5 +72,19 @@ nav a:first-of-type {
 
 nav a.router-link-exact-active {
   color: #007bff;
+}
+
+.auth-button {
+  padding: 8px 16px;
+  background-color: white;
+  color: #000000;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.auth-button:hover {
+  background-color: #ecf0f1;
 }
 </style>
