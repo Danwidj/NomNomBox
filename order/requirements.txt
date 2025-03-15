@@ -3,3 +3,6 @@ flask-cors
 firebase-admin
 requests
 python-dotenv
+gunicorn
+stripe
+
