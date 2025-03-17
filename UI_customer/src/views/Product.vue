@@ -65,12 +65,27 @@
 
               <p class="product-price">$ {{ product.price.toFixed(2) }}</p>
               <button class="add-to-cart" @click="addToCart(product)">Add to Cart</button>
+              <button class="view-details" @click="viewProductDetail(product)">View Details</button>
             </div>
           </div>
         </div>
       </main>
     </div>
   </div>
+
+  <!-- Product Detail Modal -->
+  <div v-if="showModal" class="modal-overlay" @click="closeModal">
+      <div class="modal" @click.stop>
+        <h2>{{ selectedProduct.name }}</h2>
+        <p><strong>Price:</strong> ${{ selectedProduct.price.toFixed(2) }}</p>
+        <p><strong>Ingredients:</strong></p>
+        <ul>
+          <li v-for="ingredient in selectedProduct.ingredients" :key="ingredient">{{ ingredient }}</li>
+        </ul>
+        <p><strong>Preparation:</strong> {{ selectedProduct.preparation }}</p>
+        <button class="close-modal" @click="closeModal">Close</button>
+      </div>
+    </div>
 </template>
 
 <script>
@@ -83,7 +98,9 @@ export default {
       selectedTags: [], // Stores selected dietary tags
       priceFilter: "",  // New drop-down filter for price range
       products: [], // Initially empty, filled from API
-      loading: true
+      loading: true,
+      showModal: false, // Controls modal visibility
+      selectedProduct: {} // Stores the product selected for detail view
     };
   },
   computed: {
@@ -166,6 +183,14 @@ export default {
     clearFilters() {
       this.selectedTags = [];
       this.priceFilter = "";
+    },
+    viewProductDetail(product) {
+      this.selectedProduct = product;
+      this.showModal = true;
+    },
+    closeModal() {
+      this.showModal = false;
+      this.selectedProduct = {};
     }
   }
 };
@@ -305,7 +330,7 @@ export default {
 }
 
 /* Add to Cart Button */
-.add-to-cart {
+.add-to-cart, .view-details {
   background: #ff9900;
   border: none;
   color: white;
@@ -316,7 +341,72 @@ export default {
   transition: 0.3s;
 }
 
-.add-to-cart:hover {
+.add-to-cart:hover, .view-details:hover {
   background: #e68a00;
+}
+
+/* View Details Button Styling */
+.view-details {
+  background: #4caf50;
+  margin-top: 10px;
+}
+
+.view-details:hover {
+  background: #45a049;
+}
+
+/* Modal Overlay Styling */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7); /* Darker overlay for a stronger focus effect */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal Styling */
+.modal {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 70%;
+  max-width: 700px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Softer shadow for a cleaner look */
+}
+
+/* Modal Header */
+.modal h2 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+/* Close Button Styling */
+.close-modal {
+  padding: 10px 16px;
+  font-size: 1rem;
+  background: #ffcc00;
+  border-radius: 6px;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.3s;
+  text-align: center;
+}
+
+.close-modal:hover {
+  background: #e6b800;
+}
+
+button {
+  padding: 8px 14px;
+  font-size: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+  border: none;
 }
 </style>
