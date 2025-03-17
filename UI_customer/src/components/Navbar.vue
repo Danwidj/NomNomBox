@@ -27,9 +27,9 @@ export default {
     const handleAuth = () => {
       if (isAuthenticated.value) {
         logout();
-        router.push("/login"); // Redirect to login on logout
+        router.push("/login"); // Redirect on logout
       } else {
-        router.push("/login"); // Redirect to login on button click
+        router.push("/login"); // Redirect to login
       }
     };
 
