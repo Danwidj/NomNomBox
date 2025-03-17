@@ -51,7 +51,7 @@
         </div>
         <div v-else class="grid-container">
           <div v-for="product in filteredProducts" :key="product.id" class="product-card">
-            <img :src="product.imageURL" :alt="product.name" class="product-image" />
+            <div class="product-image"><img :src="product.imageURL" :alt="product.name" class="product-image" /></div>
             <div class="product-info">
               <h3 class="product-title">{{ product.name }}</h3>
               <p class="product-description">{{ product.description }}</p>
@@ -279,6 +279,29 @@ export default {
 .product-card:hover {
   transform: scale(1.03);
   box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.product-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+  height: 180px; /* Adjust height to maintain uniformity */
+  border-radius: 10px; /* Soft rounded corners */
+  background-color: #f4f4f4; /* Neutral background for consistency */
+}
+
+.product-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover; /* Ensures the image fills the container without distortion */
+  border-radius: 10px; /* Matches container's rounded corners */
+  transition: transform 0.3s ease-in-out; /* Smooth hover effect */
+}
+
+.product-image img:hover {
+  transform: scale(1.05); /* Slight zoom effect on hover */
 }
 
 /* Add to Cart Button */
