@@ -4,6 +4,8 @@ from firebase_config import db
 import requests
 import os
 import stripe
+import firebase_admin
+from firebase_admin import firestore
 app = Flask(__name__)
 CORS(app)  # Allow CORS for frontend access
 
@@ -33,18 +35,52 @@ def place_order():
 
         # Save order in Firestore
         order_ref = db.collection("Orders").document()
-        order_ref.set({
+        order_data = {
             "orderId": order_ref.id,
             "customerId": data["customerId"],
             "items": data["items"],
             "totalPrice": data["totalPrice"],
             "status": "pending",
-            "createdAt": firestore.SERVER_TIMESTAMP
-        })
+            "paymentIntentId": None,
+            "createdAt": firestore.SERVER_TIMESTAMP,
+            "updatedAt": firestore.SERVER_TIMESTAMP
+        }
+        order_ref.set(order_data)
 
-        return jsonify({"code": 201, "message": "Order placed successfully", "orderId": order_ref.id}), 201
+      
+
+        return jsonify({
+            "code": 201,
+            "message": "Order placed successfully",
+            "orderId": order_ref.id
+            
+        }), 201
+
     except Exception as e:
         return jsonify({"code": 500, "message": f"Error placing order: {str(e)}"}), 500
 
+
+# Update Order with Payment Intent ID and Mark as Paid
+@app.route("/api/orders/update-payment", methods=["POST"])
+def update_payment():
+    try:
+        data = request.json
+        required_fields = ["orderId", "paymentIntentId"]
+
+        if not all(field in data for field in required_fields):
+            return jsonify({"code": 400, "message": "Missing required fields"}), 400
+
+        order_ref = db.collection("Orders").document(data["orderId"])
+        order_ref.update({
+            "paymentIntentId": data["paymentIntentId"],
+            "status": "paid",  # Automatically mark order as paid when payment is successful
+            "updatedAt": firestore.SERVER_TIMESTAMP
+        })
+
+        return jsonify({"code": 200, "message": "Payment Intent ID updated and order marked as paid"}), 200
+
+    except Exception as e:
+        return jsonify({"code": 500, "message": f"Error updating payment intent: {str(e)}"}), 500
+
 if __name__ == "__main__":
-    app.run(port=5003, debug=True)  # Run on port 5003
+    app.run(port=5003, debug=True)

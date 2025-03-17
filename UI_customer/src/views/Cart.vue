@@ -61,15 +61,16 @@
   <p>Customer ID: <strong>{{ customerId }}</strong></p>
 </div>
 </template>
-
 <script>
+import { loadStripe } from "@stripe/stripe-js";
+
 export default {
   name: "CartPage",
   data() {
     return {
       cart: [],
       stockData: {}, // To store stock levels from Firestore
-
+  stripe: null  ,
       customerId: "1"//change to null
 
     };
@@ -85,9 +86,26 @@ export default {
   created() {
     this.loadCart();
     this.loadCustomerId();
-
+    this.initStripe(); 
   },
   methods: {
+    async initStripe() {
+    try {
+        const response = await fetch("http://localhost:5004/api/payment/public-key");
+        const data = await response.json();
+
+        if (!data.publicKey) {
+            throw new Error(" Stripe public key is missing from the backend.");
+        }
+
+        console.log(" Using Stripe Public Key:", data.publicKey);
+
+        this.stripe = await loadStripe(data.publicKey);
+        console.log(" Stripe initialized successfully");
+    } catch (error) {
+        console.error("Stripe initialization error:", error);
+    }
+},
    async loadCart() {
   this.cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
 
@@ -148,22 +166,71 @@ increaseQuantity(item) {
       }
       this.saveCart();
     },
-    proceedToCheckout() {
-    const checkoutData = {
-        customerId: this.customerId,
-        items: this.cart.map(item => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity
-        })),
-        totalPrice: this.totalPrice
-    };
+async proceedToCheckout() {
+    try {
+        // Fetch Stripe Public Key from backend
+        const response = await fetch("http://localhost:5004/api/payment/public-key");
+        const data = await response.json();
 
-    console.log("Checkout Data:", checkoutData);
+        if (!data.publicKey) {
+            throw new Error("Stripe public key is missing from the backend.");
+        }
 
-    // Instead of sending it to an API, just log it for now
-    alert("Check console for checkout data");
+
+        const stripe = await loadStripe(data.publicKey);
+
+        if (!stripe) {
+            throw new Error("Stripe initialization failed.");
+        }
+
+        const checkoutData = {
+            customerId: this.customerId,
+            items: this.cart.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity
+            })),
+            totalPrice: this.totalPrice
+        };
+
+        // Place the Order
+        const orderResponse = await fetch("http://localhost:5003/api/orders/place", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(checkoutData)
+        });
+
+        const orderData = await orderResponse.json();
+        if (!orderResponse.ok) {
+            throw new Error(orderData.message);
+        }
+
+        //  Create Stripe Checkout Session
+        const paymentResponse = await fetch("http://localhost:5004/api/payment/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                orderId: orderData.orderId,
+                amount: this.totalPrice,
+                items: checkoutData.items  // Send items to backend
+            })
+        });
+
+        const paymentData = await paymentResponse.json();
+        if (!paymentResponse.ok) {
+            throw new Error(paymentData.message);
+        }
+
+        //  Redirect to Stripe Checkout using `sessionId`
+        const result = await stripe.redirectToCheckout({ sessionId: paymentData.sessionId });
+
+        if (result.error) {
+            alert(result.error.message);
+        }
+    } catch (error) {
+        alert("Error processing checkout: " + error.message);
+    }
 }
 
   }
