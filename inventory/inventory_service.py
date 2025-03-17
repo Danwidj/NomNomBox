@@ -15,7 +15,7 @@ db = firestore.client()
 app = Flask(__name__)
 CORS(app)  # Allow cross-origin requests
 
-# 📌 Helper function to check file extensions
+# Helper function to check file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -27,7 +27,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# 📌 Mass upload endpoint for meal kits from CSV/Excel file
+# Mass upload endpoint for meal kits from CSV/Excel file
 @app.route("/inventory/mass_upload", methods=["POST"])
 def mass_upload():
     try:
@@ -61,7 +61,7 @@ def mass_upload():
     except Exception as e:
         return jsonify({"code": 500, "message": f"Error during file upload: {str(e)}"}), 500
 
-# 📌 Helper function to process the uploaded file (CSV/Excel)
+# Helper function to process the uploaded file (CSV/Excel)
 def process_file(file_path):
     # Read the file into a DataFrame (CSV or Excel)
     if file_path.endswith('.csv'):
@@ -90,7 +90,7 @@ def process_file(file_path):
     
     return meal_kits_data
 
-# 📌 Helper function to upload data in batches
+# Helper function to upload data in batches
 def upload_data_batch(meal_kits_data):
     # Reference to Firestore collection 'inventory'
     inventory_ref = db.collection('inventory')
@@ -107,7 +107,7 @@ def upload_data_batch(meal_kits_data):
     batch.commit()
     print(f"Successfully uploaded {len(meal_kits_data)} meal kits to Firestore.")
 
-# 📌 Get all meal kits
+# Get all meal kits
 @app.route("/inventory", methods=["GET"])
 def get_inventory():
     try:
@@ -121,7 +121,7 @@ def get_inventory():
         return jsonify({"code": 500, "message": f"Error fetching inventory: {str(e)}"}), 500
 
 
-# 📌 Get meal kit by ID
+# Get meal kit by ID
 @app.route("/inventory/<string:kit_id>", methods=["GET"])
 def get_meal_kit(kit_id):
     try:
@@ -133,7 +133,7 @@ def get_meal_kit(kit_id):
         return jsonify({"code": 500, "message": f"Error retrieving meal kit: {str(e)}"}), 500
 
 
-# 📌 Add a new meal kit
+# Add a new meal kit
 @app.route("/inventory", methods=["POST"])
 def add_meal_kit():
     try:
@@ -157,7 +157,7 @@ def add_meal_kit():
         return jsonify({"code": 500, "message": f"Error adding meal kit: {str(e)}"}), 500
 
 
-# 📌 Update stock safely using transactions
+# Update stock safely using transactions
 @app.route("/inventory/<string:kit_id>", methods=["PUT"])
 def update_stock(kit_id):
     try:
@@ -182,7 +182,7 @@ def update_stock(kit_id):
         return jsonify({"code": 500, "message": f"Error updating stock: {str(e)}"}), 500
 
 
-# 📌 Delete a meal kit
+# Delete a meal kit
 @app.route("/inventory/<string:kit_id>", methods=["DELETE"])
 def delete_meal_kit(kit_id):
     try:
