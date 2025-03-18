@@ -73,14 +73,15 @@ def update_payment():
         order_ref = db.collection("Orders").document(data["orderId"])
         order_ref.update({
             "paymentIntentId": data["paymentIntentId"],
-            "status": "paid",  # Automatically mark order as paid when payment is successful
+            "status": "paid",  # ✅ Mark order as paid
             "updatedAt": firestore.SERVER_TIMESTAMP
         })
 
-        return jsonify({"code": 200, "message": "Payment Intent ID updated and order marked as paid"}), 200
+        return jsonify({"code": 200, "message": "Order updated as paid"}), 200
 
     except Exception as e:
-        return jsonify({"code": 500, "message": f"Error updating payment intent: {str(e)}"}), 500
+        return jsonify({"code": 500, "message": f"Error updating order: {str(e)}"}), 500
+
 
 if __name__ == "__main__":
     app.run(port=5003, debug=True)

@@ -7,6 +7,7 @@ import Chatbot from '../views/Chatbot.vue'
 import EditProfile from '../views/EditProfile.vue'
 import AuthView from '@/views/AuthView.vue'
 import SignUpView from '@/views/SignUpView.vue'
+import Success from "@/views/Success.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -54,6 +55,10 @@ const router = createRouter({
       name: 'sign-up',
       component: SignUpView,
       meta: { requiresGuest: true }, // Prevent logged-in users from accessing
+    },{
+      path: '/success',   //  Add success page route
+      name: 'success',
+      component: Success,
     },
   ],
 })

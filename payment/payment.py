@@ -69,33 +69,54 @@ def get_stripe_public_key():
     return jsonify({"publicKey": public_key})
 
 # Stripe Webhook: Update Firestore When Payment Is Successful
-@app.route("/webhook", methods=["POST"])
-def stripe_webhook():
-    payload = request.get_data(as_text=True)
-    sig_header = request.headers.get("Stripe-Signature")
+# @app.route("/webhook", methods=["POST"])
+# def stripe_webhook():
+#     payload = request.get_data(as_text=True)
+#     sig_header = request.headers.get("Stripe-Signature")
+
+#     try:
+#         event = stripe.Webhook.construct_event(payload, sig_header, os.getenv("STRIPE_WEBHOOK_SECRET"))
+
+#         if event["type"] == "payment_intent.succeeded":
+#             payment_intent = event["data"]["object"]
+#             order_id = payment_intent["metadata"]["orderId"]
+
+#             #  Update Firestore order status to "paid"
+#             order_ref = db.collection("Orders").document(order_id)
+#             order_ref.update({
+#                 "status": "paid",
+#                 "updatedAt": firestore.SERVER_TIMESTAMP
+#             })
+#             print(f" Order {order_id} marked as paid!")
+
+#         return jsonify(success=True), 200
+
+#     except stripe.error.SignatureVerificationError as e:
+#         return jsonify({"error": f"Webhook signature error: {str(e)}"}), 400
+
+#     except Exception as e:
+#         return jsonify({"error": f"Webhook handling error: {str(e)}"}), 500
+@app.route("/api/payment/status", methods=["GET"])
+def get_payment_status():
+    session_id = request.args.get("session_id")
+
+    if not session_id:
+        return jsonify({"error": "Missing session_id"}), 400
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, os.getenv("STRIPE_WEBHOOK_SECRET"))
+        # ✅ Fetch session details from Stripe
+        session = stripe.checkout.Session.retrieve(session_id)
 
-        if event["type"] == "payment_intent.succeeded":
-            payment_intent = event["data"]["object"]
-            order_id = payment_intent["metadata"]["orderId"]
+        if session.payment_status != "paid":
+            return jsonify({"status": session.payment_status, "message": "Payment not completed"}), 400
 
-            #  Update Firestore order status to "paid"
-            order_ref = db.collection("Orders").document(order_id)
-            order_ref.update({
-                "status": "paid",
-                "updatedAt": firestore.SERVER_TIMESTAMP
-            })
-            print(f" Order {order_id} marked as paid!")
-
-        return jsonify(success=True), 200
-
-    except stripe.error.SignatureVerificationError as e:
-        return jsonify({"error": f"Webhook signature error: {str(e)}"}), 400
+        return jsonify({
+            "status": "complete",
+            "orderId": session.metadata["orderId"]
+        }), 200
 
     except Exception as e:
-        return jsonify({"error": f"Webhook handling error: {str(e)}"}), 500
+        return jsonify({"error": f"Error fetching payment status: {str(e)}"}), 500
 
 # Run Payment Service on Port 5004
 if __name__ == "__main__":
