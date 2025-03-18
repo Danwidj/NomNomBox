@@ -1,3 +1,40 @@
+# Ignore Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environments
+venv/
+env/
+
+# Ignore Firebase credentials (Sensitive file)
+inventory/inventory-serviceAccountKey.json
+
+# Ignore environment files
+inventory/.env
+
+
+# Ignore environment variable files
 .env
-serviceAccountKey.json
-_pycache_
+
+# Ignore logs and debug files
+*.log
+debug.log
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore dependencies for Python
+Pipfile
+Pipfile.lock
+
+# Ignore Node.js dependencies (if using frontend)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Ignore Docker temporary files
+*.pid
+*.log
+docker-compose.override.yml

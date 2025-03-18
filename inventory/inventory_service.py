@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 import os
 
 # Initialize Firebase Admin SDK
-cred = credentials.Certificate('./serviceAccountKey.json')
+cred = credentials.Certificate('./inventory-serviceAccountKey.json')
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
