@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
+inventory-serviceAccountKey.json
 # Ignore virtual environments
 venv/
 env/
