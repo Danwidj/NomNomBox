@@ -31,6 +31,10 @@ coverage
 
 # Ignore Firebase credentials (Sensitive file)
 customer/customer-serviceAccountKey.json
+inventory/inventory-serviceAccountKey.json
+order/serviceAccountKey.json
 
 # Ignore environment files
 customer/.env
+inventory/.env
+order/.env
