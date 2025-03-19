@@ -111,7 +111,7 @@ def upload_data_batch(meal_kits_data):
 @app.route("/inventory", methods=["GET"])
 def get_inventory():
     try:
-        kits_ref = db.collection("Inventory").stream()
+        kits_ref = db.collection("inventory").stream()
         kits = [kit.to_dict() for kit in kits_ref]
 
         if kits:
