@@ -7,7 +7,8 @@ import Chatbot from '../views/Chatbot.vue'
 import EditProfile from '../views/EditProfile.vue'
 import AuthView from '@/views/AuthView.vue'
 import SignUpView from '@/views/SignUpView.vue'
-import Success from "@/views/Success.vue";
+import Success from "@/views/Success.vue"
+import { isAuthenticated, initAuth } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -33,49 +34,53 @@ const router = createRouter({
       component: Chatbot,
     },
     {
-      path: '/profile',
+      path: '/profile/:customerId?',
       name: 'profile',
       component: Profile,
-      meta: { requiresAuth: true }, // Protected Route
+      meta: { requiresAuth: true },
     },
     {
       path: '/edit-profile',
       name: 'edit-profile',
       component: EditProfile,
-      meta: { requiresAuth: true }, // Protected Route
+      meta: { requiresAuth: true },
     },
     {
       path: '/login',
       name: 'auth',
       component: AuthView,
-      meta: { requiresGuest: true }, // Prevent logged-in users from accessing
+      meta: { requiresGuest: true },
     },
     {
       path: '/signup',
       name: 'sign-up',
       component: SignUpView,
-      meta: { requiresGuest: true }, // Prevent logged-in users from accessing
-    },{
-      path: '/success',   //  Add success page route
+      meta: { requiresGuest: true },
+    },
+    {
+      path: '/success',
       name: 'success',
       component: Success,
     },
   ],
 })
 
-// 🔹 **Navigation Guard for Authentication**
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token'); // Get stored token
-
-  if (to.meta.requiresAuth && !token) {
-    // If user is not logged in and tries to access a protected page
-    next('/login'); // Redirect to login
-  } else if (to.meta.requiresGuest && token) {
-    // If user is logged in and tries to access login/signup
-    next('/profile'); // Redirect to profile
-  } else {
-    next(); // Allow navigation
-  }
-});
+// // Check authentication before each route navigation
+// router.beforeEach(async (to, from, next) => {
+//   // Initialize auth state if needed
+//   if (isAuthenticated.value === undefined) {
+//     await initAuth();
+//   }
+  
+//   if (to.meta.requiresAuth && !isAuthenticated.value) {
+//     // Redirect to login if trying to access protected route without authentication
+//     next('/login');
+//   } else if (to.meta.requiresGuest && isAuthenticated.value) {
+//     // Redirect to profile if trying to access guest routes when authenticated
+//     next('/profile');
+//   } else {
+//     next();
+//   }
+// });
 
 export default router;

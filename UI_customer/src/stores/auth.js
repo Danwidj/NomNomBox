@@ -1,18 +1,78 @@
-import { ref, watchEffect } from "vue";
+import { ref } from 'vue';
+import customerApi from '@/api/customerApi';
 
-export const isAuthenticated = ref(!!localStorage.getItem("token")); // Reactive state
-
-export function login(token) {
-  localStorage.setItem("token", token);
-  isAuthenticated.value = true; // Ensure reactivity updates immediately
-}
-
-export function logout() {
-  localStorage.removeItem("token");
-  isAuthenticated.value = false; // Reactively update logout status
-}
-
-// Ensure `isAuthenticated` updates even if `localStorage` changes from another tab
-watchEffect(() => {
-  isAuthenticated.value = !!localStorage.getItem("token");
+// Reactive state for authentication
+export const isAuthenticated = ref(false);
+export const currentUser = ref({
+  id: null,
+  name: '',
+  email: ''
 });
+
+// Initialize the auth state from localStorage
+export const initAuth = () => {
+  const token = localStorage.getItem('token');
+  const userId = localStorage.getItem('userId');
+  const authStatus = localStorage.getItem('isAuthenticated');
+  
+  if (token && userId && authStatus === 'true') {
+    isAuthenticated.value = true;
+    currentUser.value.id = userId;
+    
+    // Optionally fetch additional user details
+    if (userId) {
+      fetchUserDetails(userId, token);
+    }
+  } else {
+    // Clear any inconsistent state
+    isAuthenticated.value = false;
+    currentUser.value = { id: null, name: '', email: '' };
+  }
+};
+
+// Fetch user details from the API
+const fetchUserDetails = async (userId, token) => {
+  try {
+    const response = await customerApi.getCustomerDetails(userId, token);
+    if (response.data && response.data.data) {
+      currentUser.value.name = response.data.data.name || '';
+      currentUser.value.email = response.data.data.email || '';
+    }
+  } catch (error) {
+    console.error('Failed to fetch user details:', error);
+    // If token is invalid, log out
+    if (error.response && error.response.status === 401) {
+      logout();
+    }
+  }
+};
+
+// Login function
+export const login = (userId, token, userName = '') => {
+  // Update localStorage
+  localStorage.setItem('token', token);
+  localStorage.setItem('userId', userId);
+  localStorage.setItem('isAuthenticated', 'true');
+  
+  // Update reactive state
+  isAuthenticated.value = true;
+  currentUser.value.id = userId;
+  currentUser.value.name = userName;
+  
+  // If userName wasn't provided, fetch user details
+  if (!userName && token) {
+    fetchUserDetails(userId, token);
+  }
+};
+
+// Logout function
+export const logout = () => {
+  // Clear localStorage
+  localStorage.removeItem('token');
+  localStorage.removeItem('userId');
+  localStorage.removeItem('isAuthenticated');
+  
+  // Update reactive state
+  isAuthenticated.value = false;
+  currentUser.value = { id: null, name: '', email: '' };
+};

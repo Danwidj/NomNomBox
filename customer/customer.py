@@ -26,7 +26,28 @@ if not firebase_admin._apps:
 
 # Initialize Flask app & Firestore
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS to allow all origins with credentials
+# This is more flexible for development but should be restricted in production
+CORS(app, 
+     origins=["*"],  # Allow all origins in development
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     expose_headers=["Access-Control-Allow-Origin"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
+# Set CORS headers for all responses
+# @app.after_request
+# def after_request(response):
+#     # Get the origin from the request
+#     origin = request.headers.get('Origin', '*')
+#     # Allow the specific origin that made the request
+#     response.headers.add('Access-Control-Allow-Origin', origin)
+#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+#     response.headers.add('Access-Control-Allow-Credentials', 'true')
+#     return response
+
 db = firestore.client()
 customers_ref = db.collection("customers")
 
@@ -36,14 +57,14 @@ def verify_token():
     """Verifies Firebase ID token from Authorization header."""
     token = request.headers.get("Authorization")
     if not token or not token.startswith("Bearer "):
-        return None, jsonify({"code": 401, "message": "No token provided"}), 401
+        return None, jsonify({"code": 401, "message": "No token provided"})
 
     try:
         id_token = token.split("Bearer ")[1]  # Extract token
         decoded_token = auth.verify_id_token(id_token)  # Verify with Firebase
-        return decoded_token, None
+        return decoded_token, None  # Returning only two values
     except Exception as e:
-        return None, jsonify({"code": 401, "message": "Invalid token", "error": str(e)}), 401
+        return None, jsonify({"code": 401, "message": "Invalid token", "error": str(e)})
 
 
 # 🔹 **Register a new user (Sign Up)**
@@ -71,7 +92,7 @@ def register():
             "name": data["name"],
             "address": data.get("address", ""),
             "phone": data.get("phone", ""),
-            "dietary_preferences": data.get("dietary_preferences", ""),
+            "dietary_preferences": data.get("dietary_preferences", []),
         })
 
         return jsonify({"code": 201, "message": "User registered", "uid": user.uid}), 201
@@ -80,9 +101,13 @@ def register():
 
 
 # 🔹 **User Login via Firebase REST API**
-@app.route("/login", methods=["POST"])
+@app.route("/login", methods=["POST", "OPTIONS"])
 def login():
     """Handles user login via Firebase REST API."""
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        return jsonify({"code": 200, "message": "OK"}), 200
+        
     data = request.json
     email = data.get("email")
     password = data.get("password")
@@ -98,45 +123,19 @@ def login():
 
         if response.status_code == 200:
             auth_data = response.json()
-            return jsonify({"code": 200, "message": "Login successful", "token": auth_data["idToken"]}), 200
+            # Include user ID in the response for frontend
+            return jsonify({
+                "code": 200, 
+                "message": "Login successful", 
+                "token": auth_data["idToken"],
+                "id": auth_data["localId"]  # This is the Firebase user ID
+            }), 200
         else:
             return jsonify({"code": 401, "message": "Invalid credentials", "error": response.json()}), 401
 
     except Exception as e:
         return jsonify({"code": 500, "message": "Internal Server Error", "error": str(e)}), 500
 
-# #Google Login API
-# @app.route("/auth/google-login", methods=["POST"])
-# def google_login():
-#     data = request.json
-#     google_token = data.get("token")
-
-#     if not google_token:
-#         return jsonify({"code": 400, "message": "Google token required"}), 400
-
-#     try:
-#         # Verify Google token with Firebase Admin SDK
-#         decoded_token = auth.verify_id_token(google_token)
-#         uid = decoded_token["uid"]
-#         email = decoded_token["email"]
-#         name = decoded_token.get("name", "")
-
-#         # Check if user already exists in Firestore
-#         user_doc = customers_ref.document(uid).get()
-#         if not user_doc.exists:
-#             # Create new user in Firestore
-#             customers_ref.document(uid).set({
-#                 "email": email,
-#                 "name": name,
-#                 "address": "",
-#                 "phone": "",
-#                 "dietary_preferences": "",
-#             })
-
-#         return jsonify({"code": 200, "message": "Login successful", "uid": uid, "token": google_token}), 200
-
-#     except Exception as e:
-#         return jsonify({"code": 401, "message": "Invalid Google token", "error": str(e)}), 401
 
 # **Get customer details (Requires authentication)**
 @app.route("/customer/<customer_id>", methods=["GET"])
@@ -147,7 +146,9 @@ def get_customer_by_id(customer_id):
 
     customer = customers_ref.document(customer_id).get()
     if customer.exists:
-        return jsonify({"code": 200, "data": {"id": customer.id, **customer.to_dict()}}), 200
+        customer_data = customer.to_dict()
+        customer_data['customerId'] = customer.id  # Add customerId (Firestore document ID)
+        return jsonify({"code": 200, "data": customer_data}), 200
     return jsonify({"code": 404, "message": "Customer not found"}), 404
 
 
@@ -167,9 +168,12 @@ def update_customer(customer_id):
     if error:
         return error
 
-    customer = customers_ref.document(customer_id)
-    if customer.get().exists():
-        customer.update(request.json)
+    customer_doc = customers_ref.document(customer_id)
+    customer_snapshot = customer_doc.get()
+    
+    # Fixed line - checking exists attribute instead of calling exists() method
+    if customer_snapshot.exists:
+        customer_doc.update(request.json)
         return jsonify({"code": 200, "message": "Customer updated"}), 200
     return jsonify({"code": 404, "message": "Customer not found"}), 404
 

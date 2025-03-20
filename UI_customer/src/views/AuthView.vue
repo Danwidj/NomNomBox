@@ -7,8 +7,6 @@
       <button type="submit">Login</button>
     </form>
 
-    <!-- <button @click="googleSignIn">Sign in with Google</button> -->
-
     <p>
       Don't have an account?
       <router-link to="/signup">Sign Up</router-link>
@@ -17,8 +15,8 @@
 </template>
 
 <script>
-import customerApi from "../api/customerApi"; // Ensure customerApi.js is correct
-import { login as setAuth } from "@/stores/auth"; // Import auth store
+import customerApi from "../api/customerApi";
+import { login as setAuth } from "@/stores/auth"; 
 import { useRouter } from "vue-router";
 
 export default {
@@ -30,7 +28,6 @@ export default {
   },
   setup() {
     const router = useRouter();
-
     return { router };
   },
   methods: {
@@ -41,33 +38,25 @@ export default {
           password: this.password,
         });
 
+        console.log("Login response:", response);
+
         if (response.status === 200) {
-          setAuth(response.data.token); // Updates global authentication state
-          this.router.push("/profile"); // Redirect on success
+          const token = response.data.token; 
+          const customerId = response.data.id; 
+
+          // Update authentication state with the token
+          setAuth(customerId, token);
+
+          // Redirect to the profile page
+          this.router.push("/profile");
         } else {
           alert(response.data.message);
         }
       } catch (error) {
-        console.error("Login failed:", error.response?.data || error); // 🔹 Log error
+        console.error("Login failed:", error);
         alert("Login failed. Please check your credentials.");
       }
-    },
-
-    // async googleSignIn() {
-    //   try {
-    //     // 🔹 Open Google Sign-In in a new window and get the token from Flask
-    //     const response = await customerApi.googleLogin();
-    //     if (response.status === 200) {
-    //       setAuth(response.data.token);
-    //       this.router.push("/profile");
-    //     } else {
-    //       alert(response.data.message);
-    //     }
-    //   } catch (error) {
-    //     console.error("Google Sign-In failed:", error);
-    //     alert("Google Sign-In failed.");
-    //   }
-    // },
+    }
   },
 };
 </script>
@@ -77,6 +66,7 @@ export default {
   max-width: 400px;
   margin: auto;
   text-align: center;
+  padding-top: 100px; /* Push content below navbar */
 }
 input {
   display: block;
