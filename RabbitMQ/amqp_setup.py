@@ -63,4 +63,14 @@ create_queue(
     routing_key="delivery.*",
 )
 
+# In amqp_setup.py
+# Add this at the end
+create_queue(
+    channel=channel,
+    exchange_name=exchange_name,
+    queue_name="notification_queue",
+    routing_key="notification.fcm",
+)
+
+
 
