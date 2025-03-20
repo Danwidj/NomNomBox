@@ -197,4 +197,4 @@ def delete_meal_kit(kit_id):
 
 
 if __name__ == "__main__":
-    app.run(port=5002, debug=True)
+    app.run(port=5004, debug=True)
