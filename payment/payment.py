@@ -46,7 +46,7 @@ def create_payment():
             line_items=line_items,
             mode="payment",
             success_url="http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",  # Redirect URL after payment
-            cancel_url="http://localhost:5173/cancel",  # Redirect URL if payment is cancelled
+            cancel_url="http://localhost:5173/Cart",  # Redirect URL if payment is cancelled
             metadata={"orderId": data["orderId"]}
         )
 

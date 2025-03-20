@@ -108,9 +108,10 @@ export default {
 },
    async loadCart() {
   this.cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
+  
 
   try {
-    const response = await fetch("http://127.0.0.1:5002/inventory"); // Inventory API
+    const response = await fetch("http://127.0.0.1:5006/inventory"); // Inventory API
     const data = await response.json();
 
     if (data.code === 200) {
@@ -167,70 +168,43 @@ increaseQuantity(item) {
       this.saveCart();
     },
 async proceedToCheckout() {
-    try {
-        // Fetch Stripe Public Key from backend
-        const response = await fetch("http://localhost:5004/api/payment/public-key");
-        const data = await response.json();
+  try {
+    // Prepare the checkout data with customerId, items, and totalPrice.
+    const checkoutData = {
+      customerId: this.customerId,
+      items: this.cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      })),
+      totalPrice: this.totalPrice
+    };
+    console.log("Checkout Request:", checkoutData); // Debugging
 
-        if (!data.publicKey) {
-            throw new Error("Stripe public key is missing from the backend.");
-        }
+    // Call the composite service endpoint
+    const compositeResponse = await fetch("http://localhost:5005/order/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(checkoutData)
+    });
 
-
-        const stripe = await loadStripe(data.publicKey);
-
-        if (!stripe) {
-            throw new Error("Stripe initialization failed.");
-        }
-
-        const checkoutData = {
-            customerId: this.customerId,
-            items: this.cart.map(item => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity
-            })),
-            totalPrice: this.totalPrice
-        };
-
-        // Place the Order
-        const orderResponse = await fetch("http://localhost:5003/api/orders/place", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(checkoutData)
-        });
-
-        const orderData = await orderResponse.json();
-        if (!orderResponse.ok) {
-            throw new Error(orderData.message);
-        }
-
-        //  Create Stripe Checkout Session
-        const paymentResponse = await fetch("http://localhost:5004/api/payment/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                orderId: orderData.orderId,
-                amount: this.totalPrice,
-                items: checkoutData.items  // Send items to backend
-            })
-        });
-
-        const paymentData = await paymentResponse.json();
-        if (!paymentResponse.ok) {
-            throw new Error(paymentData.message);
-        }
-
-        //  Redirect to Stripe Checkout using `sessionId`
-        const result = await stripe.redirectToCheckout({ sessionId: paymentData.sessionId });
-
-        if (result.error) {
-            alert(result.error.message);
-        }
-    } catch (error) {
-        alert("Error processing checkout: " + error.message);
+    const compositeData = await compositeResponse.json();
+    if (!compositeResponse.ok) {
+      throw new Error(compositeData.message);
     }
+
+    // Retrieve the Stripe session ID from the composite response.
+    const stripeSessionId = compositeData.sessionId;
+
+    // Redirect to Stripe Checkout using the session ID.
+    const result = await this.stripe.redirectToCheckout({ sessionId: stripeSessionId });
+    if (result.error) {
+      alert(result.error.message);
+    }
+  } catch (error) {
+    alert("Error processing checkout: " + error.message);
+  }
 }
 
   }

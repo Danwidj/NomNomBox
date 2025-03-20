@@ -4,35 +4,49 @@
       <h2>My Profile</h2>
       <div class="profile-card">
         <div class="profile-pic-container">
-          <!-- <div class="profile-pic">Profile Picture</div> -->
+<img src="https://via.placeholder.com/120" alt="Profile Picture" class="profile-pic" />
         </div>
         <div class="profile-info">
-          <!-- <p><strong>ID:</strong> {{ customer.customerId }}</p> -->
           <p><strong>Name:</strong> {{ customer.name }}</p>
           <p><strong>Email:</strong> {{ customer.email }}</p>
           <p><strong>Address:</strong> {{ customer.address }}</p>
           <p><strong>Phone:</strong> {{ customer.phone }}</p>
           <p><strong>Dietary Preferences: </strong> 
-              <span v-if="customer.dietary_preferences && customer.dietary_preferences.length">
+              <span v-if="customer.dietary_preferences.length">
                 {{ customer.dietary_preferences.join(', ') }}
               </span>
               <span v-else>No preferences specified</span>
-            </p>          
+          </p>          
           <router-link to="/edit-profile" class="btn">Edit Profile</router-link>
         </div>
       </div>
     </section>
 
-    <section class="order-history section">
+    <!-- Order History Section -->
+    <section class="order-history">
       <h2>Order History</h2>
-      <div class="order-container">
-        <div v-if="orders.length === 0" class="no-orders">
-          <p>No order history available.</p>
-        </div>
-        <div class="order-item" v-for="order in orders" :key="order.id">
-          <p><strong>Order #{{ order.id }}</strong></p>
-          <p>Date: {{ order.date }}</p>
-          <p>Status: {{ order.status }}</p>
+      <div v-if="orders.length === 0" class="no-orders">
+        <p>No order history available.</p>
+      </div>
+
+      <!-- Order List -->
+      <div class="order-list">
+        <div class="order-card" v-for="order in orders" :key="order.orderId">
+          <div class="order-header">
+            <h3>Order #{{ order.orderId }}</h3>
+            <span :class="['order-status', order.status.toLowerCase()]">{{ order.status }}</span>
+          </div>
+          <p class="order-date">📅 {{ formatDate(order.createdAt) }}</p>
+          <p class="order-total">💰 Total: ${{ order.totalPrice.toFixed(2) }}</p>
+
+          <!-- Order Items -->
+          <div class="order-items">
+            <div class="item" v-for="item in order.items" :key="item.id">
+              <span class="item-name">{{ item.name }}</span>
+              <span class="item-quantity">{{ item.quantity }}x</span>
+              <span class="item-price">${{ item.price.toFixed(2) }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -54,72 +68,122 @@ export default {
       email: "",
       address: "",
       phone: "",
-      dietary_preferences: "",
+      dietary_preferences: [],
     });
     const orders = ref([]);
-    
+
     onMounted(async () => {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
-      
-      if (!token || !userId) {
-        console.error("User is not authenticated");
-        router.push('/login');
-        return;
-      }
-      
-      try {
-        await fetchUserData(userId, token);
-      } catch (error) {
-        console.error("Failed to load profile:", error);
+  const token = localStorage.getItem('token');
+  const customerId = localStorage.getItem('userId'); // Ensure it matches what backend expects
+
+  if (!token || !customerId) {
+    console.error("User is not authenticated");
+    router.push('/login');
+    return;
+  }
+
+  try {
+    console.log("Fetching customer profile...");
+    await fetchUserData(customerId, token); // Fetch customer details
+    console.log("Fetching order history...");
+    await fetchOrderHistory(customerId); // Fetch order history
+  } catch (error) {
+    console.error("Failed to load profile:", error);
+  }
+});
+    const fetchUserData = async (customerId, token) => {
+  try {
+    const response = await fetch(`http://localhost:5002/customer/${customerId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` // Pass token for authentication
       }
     });
-    
-    const fetchUserData = async (customerId, token) => {
+
+    const data = await response.json();
+    console.log("Customer API Response:", data); // Debugging
+
+    if (data.code === 200) {
+      customer.value = data.data;
+      console.log("Customer Data Loaded:", customer.value); // Debugging
+    } else {
+      console.error("Failed to fetch customer data:", data.message);
+    }
+  } catch (error) {
+    console.error("Error fetching customer data:", error);
+  }
+};
+
+    const fetchOrderHistory = async (customerId) => {
       try {
-        const response = await customerApi.getCustomerDetails(customerId, token);
-        console.log("Customer data response:", response);
-        
-        if (response && response.data && response.data.data) {
-          customer.value = response.data.data;
-          // You could fetch order history here as well
+        const response = await fetch(`http://localhost:5003/api/orders/customer/${customerId}`);
+        const data = await response.json();
+
+        if (data.code === 200) {
+          orders.value = data.data;
         } else {
-          console.error("Failed to fetch customer data");
+          console.error("No orders found for this user.");
         }
       } catch (error) {
-        console.error("Error fetching customer data:", error);
-        if (error.response && error.response.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('token');
-          localStorage.removeItem('isAuthenticated');
-          localStorage.removeItem('userId');
-          router.push('/login');
-        }
+        console.error("Error fetching order history:", error);
       }
     };
-    
-    return {
-      customer,
-      orders
-    };
+
+    const formatDate = (timestamp) => {
+  if (!timestamp) return "Unknown Date";
+
+  // Handle Firestore Timestamp (if it exists)
+  if (typeof timestamp === "object" && "seconds" in timestamp) {
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleString("en-US", {
+      timeZone: "Asia/Singapore",
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true
+    });
+  }
+
+  // Handle JavaScript Date (if stored as a string)
+  const date = new Date(timestamp);
+  if (isNaN(date)) return "Unknown Date"; // Fallback for invalid dates
+
+  return date.toLocaleString("en-US", {
+    timeZone: "Asia/Singapore",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+};
+
+
+    return { customer, orders, formatDate };
   }
 };
 </script>
 
 <style scoped>
-/* Ensures page fills screen & pushes footer down */
+/* Layout */
 .page-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh; /* Full screen height */
-  flex-grow: 1;
-  padding-top: 60px; /* Add space for the fixed navbar */
+  padding-top: 60px;
 }
 
 /* Profile Section */
 .profile-section {
   text-align: center;
-  padding: 60px 5%;
+  padding: 40px 5%;
   background: white;
   margin: 20px auto;
   border-radius: 12px;
@@ -128,7 +192,6 @@ export default {
   max-width: 800px;
 }
 
-/* Profile Card */
 .profile-card {
   display: flex;
   align-items: center;
@@ -136,25 +199,17 @@ export default {
   justify-content: center;
 }
 
-.profile-pic-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
 .profile-pic {
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   border: 3px solid #ff6600;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #f5f5f5;
-  color: #666;
-  font-size: 14px;
+  object-fit: cover;
 }
 
+p{
+  text-align: left;
+}
 .profile-info {
   text-align: left;
   font-size: 1.2rem;
@@ -163,7 +218,7 @@ export default {
 /* Order History */
 .order-history {
   text-align: center;
-  padding: 60px 5%;
+  padding: 40px 5%;
   background: white;
   margin: 20px auto;
   border-radius: 12px;
@@ -172,43 +227,78 @@ export default {
   max-width: 800px;
 }
 
-.order-container {
+.order-list {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  align-items: center;
 }
 
-.order-item {
+/* Order Card */
+.order-card {
   background: #f9f9f9;
   padding: 15px;
-  border-radius: 8px;
-  width: 80%;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  transition: 0.3s ease;
 }
 
-.no-orders {
-  color: #666;
-  font-style: italic;
-  margin: 20px 0;
+.order-card:hover {
+  transform: scale(1.02);
 }
 
-/* Button */
-.btn {
-  background-color: #ff6600;
+/* Order Header */
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.order-status {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.order-status.paid {
+  background-color: #28a745;
   color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  text-decoration: none;
-  display: inline-block;
-  margin-top: 10px;
-  font-size: 1rem;
-  border: none;
-  cursor: pointer;
-  transition: background 0.3s;
 }
 
-.btn:hover {
-  background-color: #e65c00;
+.order-status.pending {
+  background-color: #ffc107;
+  color: black;
+}
+
+.order-status.canceled {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Order Date & Total */
+.order-date,
+.order-total {
+  font-size: 1rem;
+  color: #555;
+}
+
+/* Order Items */
+.order-items {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 1rem;
+}
+
+.item-name {
+  font-weight: bold;
 }
 </style>

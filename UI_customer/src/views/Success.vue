@@ -12,38 +12,55 @@ export default {
     const sessionId = urlParams.get("session_id");
 
     if (!sessionId) {
-      console.error(" No session_id found in URL.");
+      console.error("No session_id found in URL.");
       return;
     }
 
     console.log("Checking payment status for session:", sessionId);
 
     try {
-      // Fetch payment status from backend
+      // Fetch payment status from backend to get the correct orderId
       const response = await fetch(`http://localhost:5004/api/payment/status?session_id=${sessionId}`);
       const data = await response.json();
 
       if (data.status !== "complete") {
-        console.error(" Payment not completed.");
+        console.error("Payment not completed.");
         return;
       }
 
-      console.log(" Payment successful! Updating order...");
+      const orderId = data.orderId; //  Get orderId from backend response
 
-      //  Send request to update order status
-      await fetch("http://localhost:5003/api/orders/update-payment", {
+      if (!orderId) {
+        console.error("No orderId found in payment status response.");
+        return;
+      }
+
+      console.log("Payment confirmed for order:", orderId);
+
+      // Notify backend that payment was successful
+      const updateResponse = await fetch("http://localhost:5005/order/payment-success", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: data.orderId,
-          paymentIntentId: sessionId
-        })
+        body: JSON.stringify({ orderId, session_id: sessionId }) // Send correct orderId
       });
 
-      console.log(" Order successfully marked as paid!");
+      const result = await updateResponse.json();
+
+      if (updateResponse.status !== 200) {
+        console.error("Payment processing failed:", result.message);
+        return;
+      }
+
+      console.log("Payment confirmed, order updated, and stock adjusted!");
+
+      // Clear cart after successful order and stock update
+      sessionStorage.removeItem("shoppingCart");
+      localStorage.removeItem("currentOrderId");
+
+      console.log("Cart cleared after successful payment!");
 
     } catch (error) {
-      console.error(" Error verifying payment:", error);
+      console.error("Error verifying payment:", error);
     }
   }
 };

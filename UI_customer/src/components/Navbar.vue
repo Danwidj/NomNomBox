@@ -3,7 +3,7 @@
     <div class="nav-links">
       <RouterLink to="/">Home</RouterLink>
       <RouterLink to="/Product">Product</RouterLink>
-      <RouterLink to="/Cart">Shopping Cart</RouterLink>
+      <RouterLink v-if="authState" to="/Cart">Shopping Cart</RouterLink>
       <RouterLink to="/Chatbot">Chatbot</RouterLink>
       <RouterLink v-if="authState" to="/profile">Profile</RouterLink>
     </div>

@@ -46,6 +46,9 @@ export default {
 
           // Update authentication state with the token
           setAuth(customerId, token);
+            // Store token and customer ID in sessionStorage
+          sessionStorage.setItem("token", token);
+          sessionStorage.setItem("customerId", customerId);
 
           // Redirect to the profile page
           this.router.push("/profile");

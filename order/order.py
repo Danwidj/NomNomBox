@@ -13,7 +13,7 @@ CORS(app)  # Allow CORS for frontend access
 @app.route("/api/orders/inventory", methods=["GET"])
 def get_inventory():
     try:
-        inventory_api_url = "http://localhost:5002/inventory"  # Inventory Microservice
+        inventory_api_url = "http://localhost:5006/inventory"  # Inventory Microservice
         response = requests.get(inventory_api_url)
 
         if response.status_code == 200:
@@ -73,7 +73,7 @@ def update_payment():
         order_ref = db.collection("Orders").document(data["orderId"])
         order_ref.update({
             "paymentIntentId": data["paymentIntentId"],
-            "status": "paid",  # ✅ Mark order as paid
+            "status": "paid",  #  Mark order as paid
             "updatedAt": firestore.SERVER_TIMESTAMP
         })
 
@@ -82,6 +82,37 @@ def update_payment():
     except Exception as e:
         return jsonify({"code": 500, "message": f"Error updating order: {str(e)}"}), 500
 
+# Get Order by Order ID
+@app.route("/api/orders/<string:order_id>", methods=["GET"])
+def get_order(order_id):
+    try:
+        order_ref = db.collection("Orders").document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            return jsonify({"code": 404, "message": "Order not found"}), 404
+
+        order_data = order_doc.to_dict()
+        return jsonify({"code": 200, "data": order_data}), 200
+
+    except Exception as e:
+        return jsonify({"code": 500, "message": f"Error fetching order: {str(e)}"}), 500
+
+
+# Get All Orders for a Customer
+@app.route("/api/orders/customer/<string:customer_id>", methods=["GET"])
+def get_orders_by_customer(customer_id):
+    try:
+        orders_ref = db.collection("Orders").where("customerId", "==", customer_id).stream()
+        orders = [order.to_dict() for order in orders_ref]
+
+        if not orders:
+            return jsonify({"code": 404, "message": "No orders found for this customer"}), 404
+
+        return jsonify({"code": 200, "data": orders}), 200
+
+    except Exception as e:
+        return jsonify({"code": 500, "message": f"Error fetching orders: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(port=5003, debug=True)

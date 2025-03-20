@@ -154,7 +154,7 @@ export default {
   methods: {
     async fetchProducts() {
       try {
-        const response = await fetch("http://127.0.0.1:5004/inventory"); // Fetch from Inventory API
+        const response = await fetch("http://127.0.0.1:5006/inventory"); // Fetch from Inventory API
         const data = await response.json();
         if (data.code === 200) {
           this.products = data.data; // Populate products from API response
@@ -168,6 +168,15 @@ export default {
       }
     },
     addToCart(product) {
+         // Check if the user is logged in (this is a simple example; adapt as needed)
+    const user = sessionStorage.getItem("customerId");
+    if (!user) {
+      // If the user isn't logged in, redirect them to the login page.
+      // Using Vue Router's push method.
+      this.$router.push("/login");
+      return; // Stop further execution
+    }
+
       let cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
       let existingItem = cart.find(item => item.id === product.id);
 

@@ -125,12 +125,24 @@ def get_inventory():
 @app.route("/inventory/<string:kit_id>", methods=["GET"])
 def get_meal_kit(kit_id):
     try:
-        kit_ref = db.collection("inventory").document(kit_id).get()
-        if kit_ref.exists:
-            return jsonify({"code": 200, "data": kit_ref.to_dict()}), 200
-        return jsonify({"code": 404, "message": "Meal kit not found"}), 404
+        # Query Firestore for a meal kit where "id" field matches kit_id
+        kits_ref = db.collection("inventory").where("id", "==", kit_id).stream()
+        
+        meal_kits = [kit.to_dict() for kit in kits_ref]  # Convert query results to a list
+
+        if meal_kits:
+            return jsonify({"code": 200, "data": meal_kits[0]}), 200  # Return the first match
+        else:
+            return jsonify({"code": 404, "message": "Meal kit not found"}), 404
     except Exception as e:
         return jsonify({"code": 500, "message": f"Error retrieving meal kit: {str(e)}"}), 500
+
+
+@app.route("/inventory/debug", methods=["GET"])
+def debug_inventory():
+    kits_ref = db.collection("inventory").stream()
+    kits = [kit.id for kit in kits_ref]
+    return jsonify({"code": 200, "message": "Existing meal kit IDs", "ids": kits}), 200
 
 
 # Add a new meal kit
@@ -165,15 +177,28 @@ def update_stock(kit_id):
         if "stock" not in data:
             return jsonify({"code": 400, "message": "Missing 'stock' field"}), 400
 
-        kit_ref = db.collection("inventory").document(kit_id)
+        # Query Firestore for the document where "id" matches kit_id
+        kits_ref = db.collection("inventory").where("id", "==", kit_id).stream()
+        kit_docs = list(kits_ref)
 
+        if not kit_docs:
+            return jsonify({"code": 404, "message": "Meal kit not found"}), 404
+
+        # Get the first matching document (Firestore generates random document IDs)
+        doc_ref = db.collection("inventory").document(kit_docs[0].id)
+
+        # ✅ Corrected: Proper transaction function
+        @firestore.transactional
         def stock_transaction(transaction, ref):
             doc = ref.get(transaction=transaction)
             if not doc.exists:
                 raise ValueError("Meal kit not found")
-            transaction.update(ref, {"stock": data["stock"]})
 
-        db.transaction(stock_transaction, kit_ref)
+            transaction.update(ref, {"numAvailable": data["stock"]})
+
+        transaction = db.transaction()  #  Start transaction 
+        stock_transaction(transaction, doc_ref)  #  Run the transaction
+
         return jsonify({"code": 200, "message": "Stock updated successfully"}), 200
 
     except ValueError as e:
@@ -197,4 +222,4 @@ def delete_meal_kit(kit_id):
 
 
 if __name__ == "__main__":
-    app.run(port=5004, debug=True)
+    app.run(port=5006, debug=True)
