@@ -3,9 +3,6 @@
     <section class="profile-section">
       <h2>My Profile</h2>
       <div class="profile-card">
-        <div class="profile-pic-container">
-<img src="https://via.placeholder.com/120" alt="Profile Picture" class="profile-pic" />
-        </div>
         <div class="profile-info">
           <p><strong>Name:</strong> {{ customer.name }}</p>
           <p><strong>Email:</strong> {{ customer.email }}</p>
