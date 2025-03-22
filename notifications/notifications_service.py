@@ -1,36 +1,15 @@
 from flask import Flask, request, jsonify
 import os
-import sys
 import json
 import pika
-
-# Add the current directory to the Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.append(current_dir)
-
-# First, initialize Firebase
-try:
-    # Import the firebase_config module to ensure initialization happens
-    from firebase import firebase_config
-    print("Firebase initialization imported")
-except Exception as e:
-    print(f"Error importing Firebase config: {e}")
-    sys.exit(1)
-
-# Then import other Firebase-dependent modules
-try:
-    from firebase.firebase_db import save_notification, get_user_notifications, publish_notification
-    print("Firebase DB functions imported successfully")
-except Exception as e:
-    print(f"Error importing Firebase DB functions: {e}")
-    sys.exit(1)
+from firebase import firebase_config
+from firebase.firebase_db import save_notification, get_user_notifications
 
 # RabbitMQ connection details
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "127.0.0.1")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")
-RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "notification.fcm")
+RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "notification.email")
 
 app = Flask(__name__)
 
@@ -42,13 +21,13 @@ def send_notification():
     print(f"Request data: {data}")
     
     # Validate request
-    required_fields = ['user_id', 'fcm_token', 'title', 'body']
+    required_fields = ['user_id', 'email', 'title', 'body']
     for field in required_fields:
         if field not in data:
             return jsonify({"error": f"Missing required field: {field}"}), 400
     
     user_id = data['user_id']
-    fcm_token = data['fcm_token']
+    email = data['email']
     title = data['title']
     body = data['body']
     
@@ -73,7 +52,7 @@ def send_notification():
             
             message = {
                 "user_id": user_id,
-                "fcm_token": fcm_token,
+                "email": email,
                 "title": title,
                 "body": body
             }
@@ -117,7 +96,6 @@ def get_notifications_route(user_id):
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    print("Health check requested")
     return jsonify({"status": "healthy", "service": "notifications"})
 
 @app.route('/')

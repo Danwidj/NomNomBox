@@ -3,46 +3,55 @@ import pika
 import os
 import sys
 import time
-
-# Add the current directory to the Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.append(current_dir)
-
-# Import Firebase modules
-try:
-    from firebase import firebase_config
-    from firebase_admin import messaging
-    print("Firebase modules imported successfully")
-except Exception as e:
-    print(f"Error importing Firebase modules: {e}")
-    sys.exit(1)
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # RabbitMQ connection details
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "127.0.0.1") # or esd-rabbit once on docker
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")
 RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "notification_queue")
-RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "notification.fcm")
+RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "notification.email")
+
+# Email configuration
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", SMTP_USERNAME)
 
 print(f"RabbitMQ settings: {RABBITMQ_HOST}:{RABBITMQ_PORT}, Exchange: {RABBITMQ_EXCHANGE}, Queue: {RABBITMQ_QUEUE}")
 
-def send_fcm_notification(fcm_token, title, body):
-    """Send notification via Firebase Cloud Messaging"""
-    message = messaging.Message(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
-        token=fcm_token
-    )
+def send_email(recipient_email, subject, message_body):
+    """Send an email to the specified recipient"""
+    if not all([SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD]):
+        print("Email configuration incomplete. Skipping email send.")
+        return False
     
     try:
-        response = messaging.send(message)
-        print(f"Successfully sent notification: {response}")
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+        msg['Subject'] = subject
+        
+        # Attach message body
+        msg.attach(MIMEText(message_body, 'plain'))
+        
+        # Connect to SMTP server
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()  # Secure the connection
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        
+        # Send email
+        server.send_message(msg)
+        server.quit()
+        
+        print(f"Email sent successfully to {recipient_email}")
         return True
     except Exception as e:
-        print(f"Error sending FCM notification: {e}")
+        print(f"Error sending email: {e}")
         return False
 
 def process_message(ch, method, properties, body):
@@ -51,16 +60,21 @@ def process_message(ch, method, properties, body):
     try:
         data = json.loads(body)
         user_id = data.get('user_id')
-        fcm_token = data.get('fcm_token')
-        title = data.get('title')
-        body_text = data.get('body')
+        email = data.get('email')
+        title = data.get('title', 'Notification')
+        body_text = data.get('body', '')
         
-        print(f"Processing notification for user {user_id}")
+        print(f"Processing email notification for user {user_id}")
         
-        # Send FCM notification
-        success = send_fcm_notification(fcm_token, title, body_text)
+        if not email:
+            print("No email address provided in message. Skipping.")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
         
-        if success:
+        # Send email
+        email_success = send_email(email, title, body_text)
+        
+        if email_success:
             # Acknowledge message
             ch.basic_ack(delivery_tag=method.delivery_tag)
             print("Message acknowledged")
