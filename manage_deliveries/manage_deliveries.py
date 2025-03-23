@@ -222,6 +222,9 @@ def update_delivery_request():
             update_delivery_status_request = request.get_json()
             delivery_id = update_delivery_status_request["delivery_id"]
             delivery_status = update_delivery_status_request["delivery_status"]
+            delivery_time = update_delivery_status_request["delivery_time"]
+            email = update_delivery_status_request["email"]
+            name = update_delivery_status_request["name"]
             # TODO: Uncomment once order microservice is ready
             # Update order with new status
             # order_id = update_delivery_status_request["order_id"]
@@ -230,6 +233,9 @@ def update_delivery_request():
             notification_message = {
                 "status": delivery_status,
                 "delivery_id": delivery_id,
+                "email": email,
+                "name": name,
+                "delivery_time": delivery_time,
             }
             notification_message = json.dumps(notification_message)
             # publish messagae to exchange for notification service

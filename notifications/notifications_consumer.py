@@ -101,6 +101,7 @@ def process_message(ch, method, properties, body):
             # Process delivery status updates
             delivery_id = data.get("delivery_id")
             status = data.get("status")
+            email = data.get("email")
 
             subject = f"Delivery Status Update - Delivery #{delivery_id}"
             body_text = f"Your delivery #{delivery_id} status has been updated to {status}."
@@ -108,7 +109,7 @@ def process_message(ch, method, properties, body):
             # Replace with actual email retrieval logic
 
             # Placeholder to retrieve email - you need to replace this with your actual logic
-            email = "esdg06t02@gmail.com" # Default email for debugging
+            # email = email
             if not email:
                 print("No email address found for delivery_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -202,33 +203,32 @@ def start_consumer():
     print("Channel created")
 
     # Ensure exchange exists
-    channel.exchange_declare(
-        exchange=RABBITMQ_EXCHANGE, exchange_type="topic", durable=True
-    )
-    print(f"Exchange '{RABBITMQ_EXCHANGE}' declared")
+    # channel.exchange_declare(
+    #     exchange=RABBITMQ_EXCHANGE, exchange_type="topic", durable=True
+    # )
+    # print(f"Exchange '{RABBITMQ_EXCHANGE}' declared")
 
     # Declare a queue
-    result = channel.queue_declare(queue="", exclusive=True, durable=True)
-    queue_name = result.method.queue
-    print(f"Queue '{queue_name}' declared")
+    # result = channel.queue_declare(queue="", exclusive=True, durable=True)
+    # queue_name = result.method.queue
+    # print(f"Queue '{queue_name}' declared")
 
     # Bind the queue to multiple routing keys
-    routing_keys = [
-        "delivery.assigned",
-        "delivery.pickedup",
-        "delivery.delivered",
-        "delivery.received",
-        "order.payment_success",  # Added routing key for order payment success
-    ]
-    for routing_key in routing_keys:
-        channel.queue_bind(
-            exchange=RABBITMQ_EXCHANGE, queue=queue_name, routing_key=routing_key
-        )
-        print(f"Queue bound to exchange with routing key '{routing_key}'")
+    # routing_keys = [
+    #     "delivery.assigned",
+    #     "delivery.pickedup",
+    #     "delivery.delivered",
+    #     "delivery.received",
+    # ]
+    # for routing_key in routing_keys:
+    #     channel.queue_bind(
+    #         exchange=RABBITMQ_EXCHANGE, queue=queue_name, routing_key=routing_key
+    #     )
+    #     print(f"Queue bound to exchange with routing key '{routing_key}'")
 
     # Set QoS - don't give more than one message to a worker at a time
     channel.basic_qos(prefetch_count=1)
-
+    queue_name = "Delivery"
     # Set up consumer
     channel.basic_consume(queue=queue_name, on_message_callback=process_message)
 

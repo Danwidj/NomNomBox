@@ -65,9 +65,9 @@ create_queue(
 )
 
 # so far this is for consumer side notifications
-create_queue(
-    channel=channel,
-    exchange_name=exchange_name,
-    queue_name="notification_queue",
-    routing_key="notification.email",
-)
+# create_queue(
+#     channel=channel,
+#     exchange_name=exchange_name,
+#     queue_name="notification_queue",
+#     routing_key="notification.email",
+# )
