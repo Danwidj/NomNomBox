@@ -6,6 +6,7 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import requests  # Import the requests library
 from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
@@ -21,6 +22,10 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", SMTP_USERNAME)
+
+# Order & Customer service URLs
+ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://localhost:5003/api/orders")
+CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", "http://localhost:5002/customer") #added line
 
 print(
     f"RabbitMQ settings: {RABBITMQ_HOST}:{RABBITMQ_PORT}, Exchange: {RABBITMQ_EXCHANGE}"
@@ -103,7 +108,7 @@ def process_message(ch, method, properties, body):
             # Replace with actual email retrieval logic
 
             # Placeholder to retrieve email - you need to replace this with your actual logic
-            email = "thehellshocker@gmail.com"
+            email = "esdg06t02@gmail.com" # Default email for debugging
             if not email:
                 print("No email address found for delivery_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -114,16 +119,45 @@ def process_message(ch, method, properties, body):
         elif routing_key == "order.payment_success":  # Added logic to handle order.payment_success
             # Process 'order.payment_success' message
             order_id = data.get("orderId")
-            session_id = data.get("session_id")
+            customer_id = data.get("customer_id") # Added line
+            # Fetch order details
+            try:
+                order_url = f"{ORDER_SERVICE_URL}/{order_id}"
+                order_response = requests.get(order_url)
+                order_response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+                order_data = order_response.json().get("data", {})
 
-            # Placeholder - you need to retrieve the email from the order details.
-            # Fetch order details using order_id from order service API
-            # For simplicity using a hardcoded email:
-            email = "thehellshocker@gmail.com"  # This should be from your data store.
+                # Get user email
+                customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}"
+                customer_response = requests.get(customer_url)
+                customer_response.raise_for_status()
+                customer_data = customer_response.json().get("data", {})
+                customer_email = customer_data.get("email")
+                customer_email = "esdg06t02@gmail.com" # Default email for debugging
 
-            subject = f"Payment Successful - Order #{order_id}"
-            body_text = f"Your payment for order #{order_id} with session ID {session_id} was successful!"
-            email_success = send_email(email, subject, body_text)
+                items = order_data.get("items", [])
+                formatted_items = "\n".join(
+                    [f"- {item['name']} (Quantity: {item['quantity']})" for item in items]
+                )  # Adjust field names
+
+                if not customer_email:
+                    print(f"No email found for order {order_id}")
+                    customer_email = "esdg06t02@gmail.com" # Default email for debugging
+
+                # Customize the email content with fetched order details
+                subject = f"Order Confirmation - Order #{order_id}"
+                body_text = (
+                    f"Dear Customer,\n\n"
+                    f"Your order {order_id} has been processed successfully.\n"
+                    f"We will deliver your order within 3-5 working days.\n\n"
+                    f"Your order:\n{formatted_items}\n\n"
+                    f"Thank you for your order!\n"
+                )
+                email_success = send_email(customer_email, subject, body_text)
+
+            except requests.exceptions.RequestException as e:
+                print(f"Failed to fetch order details for order {order_id}: {e}")
+                email_success = False  # Failed to send email if order details not fetched
 
         else:
             print(f"Unknown routing key: {routing_key}. Skipping.")

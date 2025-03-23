@@ -16,6 +16,9 @@ RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))  # Use environment variabl
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")  # Use env var
 ROUTING_KEY = "order.payment_success"
 
+# Make sure the needed environment variable is defined (such as customer service, where you're getting email):
+CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", "http://localhost:5002/customer")
+
 def publish_message(message):
     try:
         connection = pika.BlockingConnection(
@@ -198,6 +201,7 @@ def payment_success():
         message_payload = {
             "orderId": data["orderId"],
             "session_id": data["session_id"],
+            "customer_id": data["user_id"] # Getting customer id
             # Add other relevant details from the order to send to notification service
         }
         publish_message(message_payload)
