@@ -6,8 +6,9 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import requests  # Import the requests library
 from dotenv import load_dotenv
+import requests  # Import the requests library
+import string
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -15,7 +16,8 @@ load_dotenv()  # Load environment variables from .env file
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "127.0.0.1")  # or esd-rabbit once on docker
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")
-# Removed RABBITMQ_QUEUE and RABBITMQ_ROUTING_KEY
+NOTIFICATIONS_QUEUE = os.getenv("NOTIFICATIONS_QUEUE", "notification_queue") # get Notifications queue name
+
 # Email configuration
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -23,9 +25,11 @@ SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", SMTP_USERNAME)
 
-# Order & Customer service URLs
+# Order service URL
 ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://localhost:5003/api/orders")
 CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", "http://localhost:5002/customer") #added line
+DELIVERY_PICKEDUP_TEMPLATE = os.getenv("DELIVERY_PICKEDUP_TEMPLATE","Dear Customer,\n\nYour delivery {delivery_id} status has been updated to {status} \nThank you for your order!\n")
+
 
 print(
     f"RabbitMQ settings: {RABBITMQ_HOST}:{RABBITMQ_PORT}, Exchange: {RABBITMQ_EXCHANGE}"
@@ -71,94 +75,60 @@ def process_message(ch, method, properties, body):
         data = json.loads(body)
         routing_key = method.routing_key
 
-        if routing_key == "delivery.assigned":
-            # Process 'delivery.assigned' message
-            email = data.get("email")
-            delivery_time = data.get("delivery_time")
-            order_id = data.get("order_id")
-            name = data.get("name")
-            status = data.get("status")
+        if routing_key == "order.payment_success": # changed routing key
+            # Process 'order.payment_success' message
+            order_id = data.get("orderId")
+            customer_id = data.get("customer_id") # Added line
 
-            if not email:
-                print("No email address provided in message. Skipping.")
+            # Get user email
+            customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}" # Customer service URL
+            customer_response = requests.get(customer_url)
+            customer_response.raise_for_status() # If error occurs, raise http error
+            customer_data = customer_response.json().get("data", {})
+            customer_email = customer_data.get("email") # Gets the user email
+            # Placeholder - you need to retrieve the email from the user ID.
+
+            subject = f"Payment Successful - Order #{order_id}"
+            body_text = f"Your payment for order #{order_id} with session ID  was successful!"
+
+            if not customer_email:
+                print(f"No email address found for delivery_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
-            subject = f"Delivery Assigned - Order #{order_id}"
-            body_text = (
-                f"Dear {name},\n\n"
-                f"Your order #{order_id} has been assigned to a driver and is scheduled"
-                f" for delivery around {delivery_time}.\n\n"
-                f"Thank you for your order!\n"
-            )
-            email_success = send_email(email, subject, body_text)
+            email_success = send_email(customer_email, subject, body_text)
 
-        elif routing_key in (
+        elif routing_key in ( #Change condition of key routing here
             "delivery.pickedup",
             "delivery.delivered",
             "delivery.received",
+            "delivery.assigned",
         ):
             # Process delivery status updates
             delivery_id = data.get("delivery_id")
             status = data.get("status")
-            email = data.get("email")
+            customer_id = data.get("customer_id")  # Added Line for access
+
+
+            # Get user email
+            customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}" # Customer service URL
+            customer_response = requests.get(customer_url)
+            customer_response.raise_for_status() # If error occurs, raise http error
+            customer_data = customer_response.json().get("data", {})
+            customer_email = customer_data.get("email") # Gets the user email
+            # Placeholder - you need to retrieve the email from the user ID.
 
             subject = f"Delivery Status Update - Delivery #{delivery_id}"
-            body_text = f"Your delivery #{delivery_id} status has been updated to {status}."
-            # You would need to fetch the email from a database using delivery_id here
-            # Replace with actual email retrieval logic
+            # body_text = f"Your delivery #{delivery_id} status has been updated to {status}."
+            template = string.Template(DELIVERY_PICKEDUP_TEMPLATE) # set template
+            body_text = template.substitute(delivery_id=delivery_id,status=status)
 
-            # Placeholder to retrieve email - you need to replace this with your actual logic
-            # email = email
-            if not email:
-                print("No email address found for delivery_id. Skipping.")
+            if not customer_email:
+                print(f"No email address found for delivery_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
-            email_success = send_email(email, subject, body_text)
-
-        elif routing_key == "order.payment_success":  # Added logic to handle order.payment_success
-            # Process 'order.payment_success' message
-            order_id = data.get("orderId")
-            customer_id = data.get("customer_id") # Added line
-            # Fetch order details
-            try:
-                order_url = f"{ORDER_SERVICE_URL}/{order_id}"
-                order_response = requests.get(order_url)
-                order_response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-                order_data = order_response.json().get("data", {})
-
-                # Get user email
-                customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}"
-                customer_response = requests.get(customer_url)
-                customer_response.raise_for_status()
-                customer_data = customer_response.json().get("data", {})
-                customer_email = customer_data.get("email")
-                customer_email = "esdg06t02@gmail.com" # Default email for debugging
-
-                items = order_data.get("items", [])
-                formatted_items = "\n".join(
-                    [f"- {item['name']} (Quantity: {item['quantity']})" for item in items]
-                )  # Adjust field names
-
-                if not customer_email:
-                    print(f"No email found for order {order_id}")
-                    customer_email = "esdg06t02@gmail.com" # Default email for debugging
-
-                # Customize the email content with fetched order details
-                subject = f"Order Confirmation - Order #{order_id}"
-                body_text = (
-                    f"Dear Customer,\n\n"
-                    f"Your order {order_id} has been processed successfully.\n"
-                    f"We will deliver your order within 3-5 working days.\n\n"
-                    f"Your order:\n{formatted_items}\n\n"
-                    f"Thank you for your order!\n"
-                )
-                email_success = send_email(customer_email, subject, body_text)
-
-            except requests.exceptions.RequestException as e:
-                print(f"Failed to fetch order details for order {order_id}: {e}")
-                email_success = False  # Failed to send email if order details not fetched
+            email_success = send_email(customer_email, subject, body_text)
 
         else:
             print(f"Unknown routing key: {routing_key}. Skipping.")
@@ -203,34 +173,19 @@ def start_consumer():
     print("Channel created")
 
     # Ensure exchange exists
-    # channel.exchange_declare(
-    #     exchange=RABBITMQ_EXCHANGE, exchange_type="topic", durable=True
-    # )
-    # print(f"Exchange '{RABBITMQ_EXCHANGE}' declared")
+    channel.exchange_declare(
+        exchange=RABBITMQ_EXCHANGE, exchange_type="topic", durable=True
+    )
+    print(f"Exchange '{RABBITMQ_EXCHANGE}' declared")
 
-    # Declare a queue
-    # result = channel.queue_declare(queue="", exclusive=True, durable=True)
-    # queue_name = result.method.queue
-    # print(f"Queue '{queue_name}' declared")
+    queue_name = NOTIFICATIONS_QUEUE # changed to static queues
+    print(f"Queue '{queue_name}' declared")
 
-    # Bind the queue to multiple routing keys
-    # routing_keys = [
-    #     "delivery.assigned",
-    #     "delivery.pickedup",
-    #     "delivery.delivered",
-    #     "delivery.received",
-    # ]
-    # for routing_key in routing_keys:
-    #     channel.queue_bind(
-    #         exchange=RABBITMQ_EXCHANGE, queue=queue_name, routing_key=routing_key
-    #     )
-    #     print(f"Queue bound to exchange with routing key '{routing_key}'")
 
-    # Set QoS - don't give more than one message to a worker at a time
     channel.basic_qos(prefetch_count=1)
-    queue_name = "Delivery"
+
     # Set up consumer
-    channel.basic_consume(queue=queue_name, on_message_callback=process_message)
+    channel.basic_consume(queue=queue_name, on_message_callback=process_message) # process_message function
 
     print(f"Starting consumer, listening for messages on {queue_name}...")
     channel.start_consuming()
@@ -239,6 +194,7 @@ def start_consumer():
 if __name__ == "__main__":
     try:
         start_consumer()
+
     except KeyboardInterrupt:
         print("Consumer stopped by user")
     except Exception as e:

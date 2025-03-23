@@ -56,18 +56,16 @@ channel = create_exchange(
     exchange_type=exchange_type,
 )
 
-# only for deliveries
+# so far this is for consumer side notifications
 create_queue(
     channel=channel,
     exchange_name=exchange_name,
-    queue_name="Delivery",
-    routing_key="delivery.*",
+    queue_name="notification_queue",
+    routing_key="order.payment_success", # change to notification.email if you want to test notification_service.py
 )
-
-# so far this is for consumer side notifications
-# create_queue(
-#     channel=channel,
-#     exchange_name=exchange_name,
-#     queue_name="notification_queue",
-#     routing_key="notification.email",
-# )
+create_queue(
+    channel=channel,
+    exchange_name=exchange_name,
+    queue_name="notification_queue",
+    routing_key="delivery.*", # change to notification.email if you want to test notification_service.py
+)
