@@ -103,12 +103,26 @@ def process_message(ch, method, properties, body):
             # Replace with actual email retrieval logic
 
             # Placeholder to retrieve email - you need to replace this with your actual logic
-            email = "@gmail.com"
+            email = "thehellshocker@gmail.com"
             if not email:
                 print("No email address found for delivery_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
+            email_success = send_email(email, subject, body_text)
+
+        elif routing_key == "order.payment_success":  # Added logic to handle order.payment_success
+            # Process 'order.payment_success' message
+            order_id = data.get("orderId")
+            session_id = data.get("session_id")
+
+            # Placeholder - you need to retrieve the email from the order details.
+            # Fetch order details using order_id from order service API
+            # For simplicity using a hardcoded email:
+            email = "thehellshocker@gmail.com"  # This should be from your data store.
+
+            subject = f"Payment Successful - Order #{order_id}"
+            body_text = f"Your payment for order #{order_id} with session ID {session_id} was successful!"
             email_success = send_email(email, subject, body_text)
 
         else:
@@ -170,6 +184,7 @@ def start_consumer():
         "delivery.pickedup",
         "delivery.delivered",
         "delivery.received",
+        "order.payment_success",  # Added routing key for order payment success
     ]
     for routing_key in routing_keys:
         channel.queue_bind(

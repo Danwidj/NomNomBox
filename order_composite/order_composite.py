@@ -3,9 +3,44 @@ from flask import Flask, request, jsonify
 import requests
 from flask import Flask
 from flask_cors import CORS
+import pika
+import json
+import os
 
 app = Flask(__name__)
 CORS(app)  # This will allow all origins by default
+
+# RabbitMQ Configuration
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")  # Use environment variables, change to esd-rabbit after dockerised
+RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))  # Use environment variable
+RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")  # Use env var
+ROUTING_KEY = "order.payment_success"
+
+def publish_message(message):
+    try:
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT)
+        )
+        channel = connection.channel()
+
+        channel.exchange_declare(
+            exchange=RABBITMQ_EXCHANGE, exchange_type="topic", durable=True
+        )
+
+        channel.basic_publish(
+            exchange=RABBITMQ_EXCHANGE,
+            routing_key=ROUTING_KEY,
+            body=json.dumps(message),
+            properties=pika.BasicProperties(delivery_mode=2),  # Make message persistent
+        )
+
+        print(f" [x] Sent {message} to exchange {RABBITMQ_EXCHANGE} with routing key {ROUTING_KEY}")
+
+    except Exception as e:
+        print(f"Error publishing message to RabbitMQ: {e}")
+    finally:
+        if connection:
+            connection.close()
 
 @app.route("/order/checkout", methods=["POST"])
 def checkout():
@@ -158,6 +193,14 @@ def payment_success():
                 return jsonify({"code": 400, "message": f"Error updating stock for {item['name']}"}), 400
 
             print(f"numAvailable updated for {item['id']} - New stock: {new_stock}")
+
+        # Create message payload for notification
+        message_payload = {
+            "orderId": data["orderId"],
+            "session_id": data["session_id"],
+            # Add other relevant details from the order to send to notification service
+        }
+        publish_message(message_payload)
 
         return jsonify({"code": 200, "message": "Payment confirmed, order updated, and stock adjusted"}), 200
 
