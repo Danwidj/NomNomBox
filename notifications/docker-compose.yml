@@ -1,0 +1,46 @@
+# added this file for future reference when we have the single compose file
+
+version: "3.9"
+
+volumes:
+  rabbitmq_data:
+    name: esd_rabbitmq_data
+
+networks:
+  esd-net:
+    driver: bridge
+    name: esd-net
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: esd-rabbit
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - esd-net
+
+  notifications_service:
+    build: .
+    ports:
+      - "8000:8000"
+    networks:
+      - esd-net
+    depends_on:
+      - rabbitmq
+    env_file:
+      - .env  # Load environment variables from .env
+
+  notifications_consumer:
+    build: .
+    networks:
+      - esd-net
+    depends_on:
+      - rabbitmq
+    env_file:
+      - .env  # Load environment variables from .env
+    command: python notifications/notifications_consumer.py  # Override the default CMD

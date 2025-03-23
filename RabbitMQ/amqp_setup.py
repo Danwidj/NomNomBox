@@ -69,7 +69,3 @@ create_queue(
     queue_name="notification_queue",
     routing_key="notification.email",
 )
-
-
-
-

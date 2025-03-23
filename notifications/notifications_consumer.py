@@ -6,6 +6,8 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 
 # RabbitMQ connection details
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "127.0.0.1") # or esd-rabbit once on docker
