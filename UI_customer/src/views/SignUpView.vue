@@ -172,7 +172,12 @@ export default {
         }
       } catch (error) {
         console.error("Sign-up failed:", error.response?.data || error);
-        alert("Sign-up failed. Please try again.");
+        // Display the specific error message from the backend if available
+        if (error.response?.data?.message) {
+          alert(error.response.data.message);
+        } else {
+          alert("Sign-up failed. Please try again.");
+        }
       }
     }
   },
