@@ -56,7 +56,7 @@ channel = create_exchange(
     exchange_type=exchange_type,
 )
 
-# so far this is for consumer side notifications
+# Both order payment success and delivery notifications will use the same queue
 create_queue(
     channel=channel,
     exchange_name=exchange_name,
