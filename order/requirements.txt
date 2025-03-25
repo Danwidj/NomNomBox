@@ -1,6 +1,8 @@
-flask
+Flask
 flask-cors
 firebase-admin
-requests
-python-dotenv
 stripe
+requests
+google-cloud-firestore
+apscheduler
+python-dotenv

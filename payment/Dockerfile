@@ -8,14 +8,14 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Copy all files to working directory
+# Copy project files
 COPY . .
 
 # Install dependencies
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Expose the service port
-EXPOSE 5003
+# Expose the port your app runs on
+EXPOSE 5004
 
 # Run the Flask app
-CMD ["python", "order.py"]
+CMD ["python", "payment.py"]
