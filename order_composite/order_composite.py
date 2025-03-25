@@ -48,7 +48,6 @@ def publish_message(message):
 @app.route("/order/checkout", methods=["POST"])
 def checkout():
     data = request.json
-
     for item in data["items"]:
         inv_response = requests.get(f"http://localhost:5006/inventory/{item['id']}")
 
@@ -161,6 +160,7 @@ def payment_success():
             return jsonify({"code": 400, "message": "Invalid order data received"}), 400
 
         print(f"Order Items: {order_data['data']['items']}")
+        token = data.get("token") 
 
         #  Fetch stock from inventory service
         for item in order_data["data"]["items"]:
@@ -201,7 +201,10 @@ def payment_success():
         customer_id = data["user_id"]  # Assuming user_id is the customer_id
         try:
             customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}"
-            customer_response = requests.get(customer_url)
+            headers = {
+                    "Authorization": f"Bearer {token}"  # Send token as auth header
+                }
+            customer_response = requests.get(customer_url, headers=headers)
             customer_response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
             customer_data = customer_response.json().get("data", {})
             customer_email = customer_data.get("email")

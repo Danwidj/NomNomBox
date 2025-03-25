@@ -38,12 +38,13 @@ export default {
       console.log("Payment confirmed for order:", orderId);
         // 3. Now retrieve userId and delivery time slot from sessionStorage
       const userId = sessionStorage.getItem("customerId");
+      const token = sessionStorage.getItem("token");
 
       // Notify backend that payment was successful
       const updateResponse = await fetch("http://localhost:5005/order/payment-success", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, session_id: sessionId, user_id: userId  }) // Send correct orderId
+        body: JSON.stringify({ orderId, session_id: sessionId, user_id: userId , token: token }) // Send correct orderId
       });
 
       const result = await updateResponse.json();

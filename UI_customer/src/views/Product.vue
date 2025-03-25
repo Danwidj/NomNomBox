@@ -157,7 +157,7 @@ export default {
         const response = await fetch("http://127.0.0.1:5006/inventory"); // Fetch from Inventory API
         const data = await response.json();
         if (data.code === 200) {
-          this.products = data.data; // Populate products from API response
+          this.products = data.data.filter(product => product.numAvailable > 0); // Only keep in-stock items
         } else {
           console.error("No products available");
         }
