@@ -6,6 +6,7 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,6 +43,7 @@ export default function RootLayout({
               <Breadcrumb>Manage Deliveries</Breadcrumb>
             </header>
             {children}
+            <Toaster />
           </SidebarInset>
         </SidebarProvider>
       </body>
