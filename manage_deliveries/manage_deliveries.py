@@ -27,6 +27,7 @@ user_URL = "http://localhost:5000/user"
 schedule_URL = "http://localhost:5002/schedule"
 order_URL = "http://localhost:5001/order"
 delivery_URL = "http://localhost:5003/delivery"
+availability_URL = "https://personal-6fbyxkeb.outsystemscloud.com/DriverAPI_REST/rest/Driver/Addorupdate_availability"
 
 
 # RabbitMQ
@@ -55,31 +56,38 @@ def connectAMQP():
         print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
         exit(1) # terminate
 
-def updateOrder(order_id, delivery_id, delivery_status="Assigned To Driver"):
+def update_order(order_id, delivery_id, delivery_status="Assigned To Driver"):
     order = invoke_http(order_URL + "/order/" + str(order_id), method='GET')
     order["delivery_id"] = delivery_id
     order["delivery_status"] = delivery_status
     order = invoke_http(order_URL + "/order/" + str(order_id), json=order, method='PUT')
     return order
 
-def getUserInfo(user_id):
+def get_user_info(user_id):
     user_information = invoke_http(user_URL + "/user/" + str(user_id), method='GET')
     print("user_information:", user_information)
     return user_information
 
-def assignDriver(desired_timeslot_details):
+def assign_driver(desired_timeslot_details):
     assigned_driver = invoke_http(schedule_URL, json=desired_timeslot_details, method='POST')
     return assigned_driver
 
-def createDelivery(delivery_details):
+def create_delivery(delivery_details):
     delivery = invoke_http(delivery_URL, json=delivery_details, method='POST')
     return delivery
 
+def update_availability(availability_details):
+    availability = invoke_http(availability_URL, json=availability_details, method='POST')
+    return availability
 
-def processPlaceDeliveryRequest(delivery_request):
+def check_driver_delivery_assignment(driver_id):
+    assignments = invoke_http(schedule_URL + "?driver_id=" + str(driver_id), method='GET')
+    return assignments["data"]
+
+def process_place_delivery_request(delivery_request):
     #1 get the user info
     user_id = delivery_request["user_id"]
-    user_information = getUserInfo(user_id)
+    user_information = get_user_info(user_id)
     user_address = user_information["address"]
 
 
@@ -91,7 +99,7 @@ def processPlaceDeliveryRequest(delivery_request):
         "desired_time": desired_delivery_time,
     };
 
-    assigned_driver_response = assignDriver(desired_delivery_time_request)
+    assigned_driver_response = assign_driver(desired_delivery_time_request)
     if assigned_driver_response["code"] != 201:
         return assigned_driver_response
     assigned_driver_id = assigned_driver_response["data"]["driver_id"]
@@ -103,7 +111,7 @@ def processPlaceDeliveryRequest(delivery_request):
         "location": user_address,
         "driver_id": assigned_driver_id,
     }
-    delivery_response = createDelivery(delivery_details)
+    delivery_response = create_delivery(delivery_details)
     if delivery_response["code"] != 201:
         return delivery_response
 
@@ -111,7 +119,7 @@ def processPlaceDeliveryRequest(delivery_request):
     #4 update the order
     delivery_id = delivery_response["data"]["id"]
     order_id = delivery_request["order_id"]
-    order = updateOrder(order_id=order_id, delivery_id=delivery_id)
+    order = update_order(order_id=order_id, delivery_id=delivery_id)
 
 
 
@@ -154,6 +162,28 @@ def start_producer():
     # print("producer started")
 
 
+
+def publish_message(message):
+    global producer
+    try:
+        if producer is None:
+            start_producer()
+        # Get the message from the request
+        message = request.json
+        message = json.dumps(message).encode()
+        
+        if not message:
+            return jsonify({"error": "Invalid message format"}), 400
+
+        producer.send(KAFKA_TOPIC, value=message)
+
+        # Return success response
+        return jsonify({"message": "Message sent"}), 200
+    except Exception as e:
+        # Handle any errors
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/message", methods=['POST'])
 def post_message():
     global producer
@@ -175,6 +205,70 @@ def post_message():
         # Handle any errors
         return jsonify({"error": str(e)}), 500
 
+def convert_to_unix(timestamp: str) -> int:
+    dt = datetime.fromisoformat(timestamp)
+    return int(dt.timestamp())
+
+@app.route("/availability", methods=["POST"])
+def update_availability():
+    global producer
+    try:
+        if producer is None:
+            start_producer()
+    except Exception as e:
+        # Handle any errors
+        return jsonify({"error": str(e)}), 500
+        
+# Simple check of input format and data of the request are JSON
+    if request.is_json:
+        try:
+            delivery_request = request.get_json()
+            print("\nReceived a update availability request in JSON:", delivery_request)
+            # first check if driver has already been assigned to any deliveries if he wants to remove timeslot
+            driver_id = delivery_request["driver_id"]
+            # delivery_assignments = check_driver_delivery_assignment(driver_id)
+            timeslot_changes = delivery_request["changes"]
+            occupied_timeslots= []
+            for change in timeslot_changes:
+                if change["change_type"] == "remove":
+                    occupied_timeslots.append(change["timeslot"])
+                    # for assignment in delivery_assignments:
+                    # assigned_timeslot = convert_to_unix(assignment["timeslot"])
+                    # if change["timeslot"] == assigned_timeslot or change["timeslot"] == assigned_timeslot + 1800:
+                    #     occupied_timeslots.append(change["timeslot"])
+            producer.send(KAFKA_TOPIC, value=json.dumps(delivery_request).encode())
+
+            if len(occupied_timeslots) > 0:
+                return jsonify({
+                    "code": 200,
+                    "message": "Request to modify timeslots pending. The system is checking if there are available drivers that can be re-assigned",
+                }), 200
+            else:
+                result = update_availability(delivery_request)
+                return jsonify(result), result["code"]
+
+
+
+        except Exception as e:
+            # Unexpected error in code
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            ex_str = str(e) + " at " + str(exc_type) + ": " + fname + ": line " + str(exc_tb.tb_lineno)
+            print(ex_str)
+
+            return jsonify({
+                "code": 500,
+                "message": "place_delivery_request.py internal error: " + ex_str
+            }), 500
+
+
+    # if reached here, not a JSON request.
+    return jsonify({
+        "code": 400,
+        "message": "Invalid JSON input: " + str(request.get_data())
+    }), 400
+
+
 @app.route("/place_delivery_request", methods=['POST'])
 def place_delivery_request():
 # Simple check of input format and data of the request are JSON
@@ -184,7 +278,7 @@ def place_delivery_request():
             print("\nReceived a delivery request in JSON:", delivery_request)
 
 
-            result = processPlaceDeliveryRequest(delivery_request)
+            result = process_place_delivery_request(delivery_request)
             return jsonify(result), result["code"]
 
         except Exception as e:
@@ -228,7 +322,7 @@ def update_delivery_request():
             # TODO: Uncomment once order microservice is ready
             # Update order with new status
             # order_id = update_delivery_status_request["order_id"]
-            # updateOrder(delivery_id, order_id, delivery_status=delivery_status)
+            # update_order(delivery_id, order_id, delivery_status=delivery_status)
             print(delivery_status)
             notification_message = {
                 "status": delivery_status,
@@ -287,7 +381,6 @@ def update_delivery_request():
                 "code": 500,
                 "message": "place_delivery_request.py internal error: " + ex_str
             }), 500
-
 
 
 if __name__ == "__main__":

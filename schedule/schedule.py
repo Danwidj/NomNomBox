@@ -73,23 +73,22 @@ def consume(consumer):
             driver_id = received_event["driver_id"]
             with app.app_context():
                 for change in schedule_change:
-                    start_time = datetime.fromtimestamp(int(change["start_time"]), timezone.utc)
-                    end_time = datetime.fromtimestamp(int(change["end_time"]), timezone.utc)
-                    counter_time = start_time
+                    time_slot = datetime.fromtimestamp(int(change["time_slot"]), timezone.utc)
                     # print (start_time, end_time)
+                    counter_time = time_slot
                     if change["change_type"] == "add":
-                        while counter_time < end_time:
+                        while counter_time < time_slot + timedelta(minutes=60):
                             new_schedule = Schedule(
                                 timeslot=counter_time,
                                 driver_id=driver_id,
                                 assigned=False
                             )
                             db.session.add(new_schedule)
-                            # print(counter_time)
                             counter_time += timedelta(minutes=30)
 
+
                     elif change["change_type"] == "remove":
-                        while counter_time < end_time:
+                        while counter_time < time_slot + timedelta(minutes=60):
                             db.session.query(Schedule).filter(Schedule.timeslot == counter_time, Schedule.driver_id == driver_id).delete()
                             counter_time += timedelta(minutes=30)
                             # print(counter_time)

@@ -79,6 +79,15 @@ def register():
             return jsonify({"code": 400, "message": f"Missing field: {field}"}), 400
 
     try:
+        # Check if email already exists
+        try:
+            auth.get_user_by_email(data["email"])
+            # If we get here, the email exists
+            return jsonify({"code": 400, "message": "Email already exists"}), 400
+        except auth.UserNotFoundError:
+            # Email doesn't exist, proceed with registration
+            pass
+
         # Create user in Firebase Authentication
         user = auth.create_user(
             email=data["email"],
@@ -97,6 +106,9 @@ def register():
 
         return jsonify({"code": 201, "message": "User registered", "uid": user.uid}), 201
     except Exception as e:
+        # Firebase might throw a specific error for existing email, catch it here as well
+        if "EMAIL_EXISTS" in str(e) or "email already exists" in str(e).lower():
+            return jsonify({"code": 400, "message": "Email already exists"}), 400
         return jsonify({"code": 400, "message": str(e)}), 400
 
 
