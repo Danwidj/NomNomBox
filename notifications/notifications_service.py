@@ -9,74 +9,72 @@ from firebase.firebase_db import save_notification, get_user_notifications
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "127.0.0.1")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")
-RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "notification.email")
+RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "order.payment_success")
 
 app = Flask(__name__)
 
 @app.route('/notify', methods=['POST'])
 def send_notification():
-    """API endpoint to send a notification"""
+    """API endpoint to send a payment success notification for troubleshooting"""
     print("Received request to /notify endpoint")
     data = request.json
     print(f"Request data: {data}")
-    
-    # Validate request
-    required_fields = ['user_id', 'email', 'title', 'body']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({"error": f"Missing required field: {field}"}), 400
-    
-    user_id = data['user_id']
-    email = data['email']
-    title = data['title']
-    body = data['body']
-    
+
+    # Validate request - orderId, session_id, customer_id, customer_email are required
+    required_fields = ['orderId', 'session_id', 'customer_id', 'customer_email'] #Refactoring
+
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": f"Missing required field: {field}"}), 400
+
+    order_id = data['orderId']
+    session_id = data['session_id']
+    customer_id = data['customer_id']
+    customer_email = data['customer_email']
+
     try:
-        # Save notification to Firestore
-        notification_id = save_notification(user_id, title, body)
-        print(f"Notification saved with ID: {notification_id}")
-        
+        # No need to save to Firestore for this troubleshooting endpoint
         # Publish to RabbitMQ
         try:
             connection = pika.BlockingConnection(
                 pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT)
             )
             channel = connection.channel()
-            
+
             # Ensure exchange exists
             channel.exchange_declare(
                 exchange=RABBITMQ_EXCHANGE,
                 exchange_type='topic',
                 durable=True
             )
-            
+
             message = {
-                "user_id": user_id,
-                "email": email,
-                "title": title,
-                "body": body
+                "orderId": order_id,
+                "session_id": session_id,
+                "customer_id": customer_id,
+                "customer_email": customer_email
             }
-            
+
             channel.basic_publish(
                 exchange=RABBITMQ_EXCHANGE,
                 routing_key=RABBITMQ_ROUTING_KEY,
                 body=json.dumps(message),
                 properties=pika.BasicProperties(delivery_mode=2)  # Make message persistent
             )
-            
+
             connection.close()
             print("Message published to RabbitMQ")
-            
+
         except Exception as e:
             print(f"Error publishing to RabbitMQ: {e}")
-            # Still return success since we saved to Firestore
-        
+            return jsonify({"success": False, "message": f"Error publishing to RabbitMQ: {e}"}), 500
+
         return jsonify({
             "success": True,
-            "message": "Notification queued for delivery",
-            "notification_id": notification_id
+            "message": "Payment success notification queued for delivery",
+            "orderId": order_id,
+            "customer_email": customer_email
         })
-            
+
     except Exception as e:
         print(f"Error in send_notification: {e}")
         return jsonify({"error": str(e)}), 500
