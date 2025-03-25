@@ -117,7 +117,7 @@ def get_orders_by_customer(customer_id):
 
     
 @app.route("/api/orders/{orderId}", methods=["PATCH"])
-def place_order():
+def place_orderr():
     try:
         data = request.json
         required_fields = ["orderId"]
