@@ -57,16 +57,15 @@ def connectAMQP():
         exit(1) # terminate
 
 def update_order(order_id, delivery_id, delivery_status="Assigned To Driver"):
-    order = invoke_http(order_URL + "/order/" + str(order_id), method='GET')
-    order["delivery_id"] = delivery_id
-    order["delivery_status"] = delivery_status
-    order = invoke_http(order_URL + "/order/" + str(order_id), json=order, method='PUT')
+    order["deliveryId"] = delivery_id
+    order["deliveryStatus"] = delivery_status
+    order = invoke_http(order_URL + "/order/" + str(order_id), method='PATCH')
     return order
 
-def get_user_info(user_id):
-    user_information = invoke_http(user_URL + "/user/" + str(user_id), method='GET')
-    print("user_information:", user_information)
-    return user_information
+def get_customer_info(customer_id):
+    user_information = invoke_http(user_URL + "/customer/" + str(customer_id), method='GET')
+    print("user_information:", user_information["data"])
+    return user_information["data"]
 
 def assign_driver(desired_timeslot_details):
     assigned_driver = invoke_http(schedule_URL, json=desired_timeslot_details, method='POST')

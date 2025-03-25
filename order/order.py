@@ -113,6 +113,40 @@ def get_orders_by_customer(customer_id):
 
     except Exception as e:
         return jsonify({"code": 500, "message": f"Error fetching orders: {str(e)}"}), 500
+    
+
+    
+@app.route("/api/orders/{orderId}", methods=["PATCH"])
+def place_order():
+    try:
+        data = request.json
+        required_fields = ["orderId"]
+
+        if not all(field in data for field in required_fields):
+            return jsonify({"code": 400, "message": "Missing required fields"}), 400
+
+        order_ref = db.collection("Orders").document(data["orderId"])
+
+        fields_to_update = {}
+
+        for key, value in data.items():
+            if key != "orderId":
+                fields_to_update[key] = value
+        if fields_to_update:
+            fields_to_update["updatedAt"] = firestore.SERVER_TIMESTAMP
+            order_ref.update(fields_to_update)      
+
+      
+
+        return jsonify({
+            "code": 201,
+            "message": "Order placed successfully",
+            "orderId": order_ref.id
+            
+        }), 201
+
+    except Exception as e:
+        return jsonify({"code": 500, "message": f"Error placing order: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(port=5003, debug=True)
