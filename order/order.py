@@ -154,7 +154,7 @@ from google.cloud import firestore as gcf
 def cleanup_unpaid_orders():
     try:
         now = datetime.utcnow()
-        five_minutes_ago = now - timedelta(minutes=1)
+        five_minutes_ago = now - timedelta(minutes=3)
         timestamp_cutoff = five_minutes_ago
 
         # Get all pending orders older than 5 minutes
@@ -195,7 +195,7 @@ def run_cleanup_job():
 
 # Scheduler
 scheduler = BackgroundScheduler()
-scheduler.add_job(run_cleanup_job, "interval", minutes=1)
+scheduler.add_job(run_cleanup_job, "interval", minutes=3)
 scheduler.start()
 
 if __name__ == "__main__":
