@@ -148,5 +148,55 @@ def place_orderr():
     except Exception as e:
         return jsonify({"code": 500, "message": f"Error placing order: {str(e)}"}), 500
 
+from datetime import datetime, timedelta
+from google.cloud import firestore as gcf 
+@app.route("/api/orders/cleanup", methods=["DELETE"])
+def cleanup_unpaid_orders():
+    try:
+        now = datetime.utcnow()
+        five_minutes_ago = now - timedelta(minutes=1)
+        timestamp_cutoff = five_minutes_ago
+
+        # Get all pending orders older than 5 minutes
+        pending_orders = db.collection("Orders")\
+            .where("status", "==", "pending")\
+            .where("createdAt", "<", timestamp_cutoff)\
+            .stream()
+
+        deleted_order_ids = []
+        print("Checking for expired pending orders...")
+
+        for order in pending_orders:
+            order_id = order.id
+            order.reference.delete()
+            deleted_order_ids.append(order_id)
+            print(f" Deleted expired order: {order_id}")
+
+        if not deleted_order_ids:
+            print("No expired orders to delete.")
+        else:
+            print(f" Total deleted: {len(deleted_order_ids)}")
+
+        return deleted_order_ids
+
+    except Exception as e:
+        print(f" Error during cleanup: {e}")
+        return []
+    
+from apscheduler.schedulers.background import BackgroundScheduler
+
+def run_cleanup_job():
+    with app.app_context():
+        try:
+            cleanup_unpaid_orders()
+            print(" Cleanup job ran")
+        except Exception as e:
+            print(f" Cleanup job failed: {e}")
+
+# Scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(run_cleanup_job, "interval", minutes=1)
+scheduler.start()
+
 if __name__ == "__main__":
     app.run(port=5003, debug=True)
