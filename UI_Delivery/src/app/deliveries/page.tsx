@@ -43,9 +43,9 @@ export default function DeliveryList() {
         // Replace with your actual API endpoint
         const driver_id = 1;
         const response = await fetch(
-          `/manage-deliveries?driver_id=${driver_id}`
+          `http://manage-deliveries:3000/deliveries?driver_id=${driver_id}`
         );
-        const jsonResponse= await response.json();
+        const jsonResponse = await response.json();
         const data = jsonResponse.data;
 
         // All deliveries initially have "Assigned to Driver" status
@@ -117,14 +117,16 @@ export default function DeliveryList() {
 
   // Update delivery status
   const updateDeliveryStatus = async (
-    id: string,
+    delivery_id: string,
     newStatus: DeliveryStatus
   ) => {
     try {
       // Update locally first for immediate UI feedback
       setDeliveries(
         deliveries.map((delivery) =>
-          delivery.id === id ? { ...delivery, status: newStatus } : delivery
+          delivery.delivery_id === delivery_id
+            ? { ...delivery, status: newStatus }
+            : delivery
         )
       );
 
@@ -135,7 +137,7 @@ export default function DeliveryList() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id,
+          delivery_id,
           status: newStatus,
         }),
       });
@@ -263,7 +265,7 @@ export default function DeliveryList() {
               filteredDeliveries.map((delivery) => {
                 const { timeRange, date } = formatTimeslot(delivery.timeslot);
                 return (
-                  <Card key={delivery.id} className="overflow-hidden">
+                  <Card key={delivery.delivery_id} className="overflow-hidden">
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg font-medium">
@@ -297,7 +299,7 @@ export default function DeliveryList() {
                           className="bg-primary hover:bg-primary/90"
                           onClick={() =>
                             updateDeliveryStatus(
-                              delivery.id,
+                              delivery.delivery_id,
                               getNextStatus(delivery.status)!
                             )
                           }
