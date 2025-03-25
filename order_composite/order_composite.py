@@ -62,9 +62,9 @@ def checkout():
 
         inv_data = inv_response.json()
         
-        # ✅ Ensure we're correctly reading "numAvailable"
+        # Ensure we're correctly reading "numAvailable"
         if "data" in inv_data and isinstance(inv_data["data"], dict):
-            available_stock = inv_data["data"].get("numAvailable", 0)  # ✅ Correct extraction
+            available_stock = inv_data["data"].get("numAvailable", 0)  # Correct extraction
         else:
             available_stock = 0  # Fallback if the structure is wrong
 
@@ -196,12 +196,25 @@ def payment_success():
                 return jsonify({"code": 400, "message": f"Error updating stock for {item['name']}"}), 400
 
             print(f"numAvailable updated for {item['id']} - New stock: {new_stock}")
+        
+        # Fetch the customer's email from the Customer Service
+        customer_id = data["user_id"]  # Assuming user_id is the customer_id
+        try:
+            customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}"
+            customer_response = requests.get(customer_url)
+            customer_response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            customer_data = customer_response.json().get("data", {})
+            customer_email = customer_data.get("email")
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching customer data: {e}")
+            customer_email = None  # Handle the error
 
         # Create message payload for notification
         message_payload = {
             "orderId": data["orderId"],
             "session_id": data["session_id"],
-            "customer_id": data["user_id"] # Getting customer id
+            "customer_id": data["user_id"],  # still include user_id
+            "customer_email": customer_email  # Include the email
             # Add other relevant details from the order to send to notification service
         }
         publish_message(message_payload)
@@ -214,3 +227,4 @@ def payment_success():
 
 if __name__ == "__main__":
     app.run(port=5005, debug=True)
+

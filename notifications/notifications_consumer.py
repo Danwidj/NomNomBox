@@ -25,9 +25,6 @@ SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", SMTP_USERNAME)
 
-# Order service URL
-ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://localhost:5003/api/orders")
-CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", "http://localhost:5002/customer") #added line
 DELIVERY_PICKEDUP_TEMPLATE = os.getenv("DELIVERY_PICKEDUP_TEMPLATE","Dear Customer,\n\nYour delivery {delivery_id} status has been updated to {status} \nThank you for your order!\n")
 
 
@@ -78,21 +75,14 @@ def process_message(ch, method, properties, body):
         if routing_key == "order.payment_success": # changed routing key
             # Process 'order.payment_success' message
             order_id = data.get("orderId")
-            customer_id = data.get("customer_id") # Added line
-
+            customer_email = data.get("customer_email") # Email!
             # Get user email
-            customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}" # Customer service URL
-            customer_response = requests.get(customer_url)
-            customer_response.raise_for_status() # If error occurs, raise http error
-            customer_data = customer_response.json().get("data", {})
-            customer_email = customer_data.get("email") # Gets the user email
-            # Placeholder - you need to retrieve the email from the user ID.
 
             subject = f"Payment Successful - Order #{order_id}"
             body_text = f"Your payment for order #{order_id} with session ID  was successful!"
 
             if not customer_email:
-                print(f"No email address found for delivery_id. Skipping.")
+                print(f"No email address found for customer_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
@@ -107,16 +97,10 @@ def process_message(ch, method, properties, body):
             # Process delivery status updates
             delivery_id = data.get("delivery_id")
             status = data.get("status")
-            customer_id = data.get("customer_id")  # Added Line for access
-
-
-            # Get user email
-            customer_url = f"{CUSTOMER_SERVICE_URL}/{customer_id}" # Customer service URL
-            customer_response = requests.get(customer_url)
-            customer_response.raise_for_status() # If error occurs, raise http error
-            customer_data = customer_response.json().get("data", {})
-            customer_email = customer_data.get("email") # Gets the user email
-            # Placeholder - you need to retrieve the email from the user ID.
+            customer_email = data.get("email")  # email - ADDED THE COMMPOSITE!!
+            name = data.get("name")  # name - ADDED THE COMMPOSITE!!
+            delivery_time = data.get("delivery_time")  #delivery_time - ADDED THE COMMPOSITE!!
+            order_id = data.get("order_id")  #order_id - ADDED THE COMMPOSITE!!
 
             subject = f"Delivery Status Update - Delivery #{delivery_id}"
             # body_text = f"Your delivery #{delivery_id} status has been updated to {status}."
