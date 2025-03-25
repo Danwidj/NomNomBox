@@ -13,7 +13,8 @@ from kafka import KafkaProducer
 from contextlib import asynccontextmanager
 import asyncio
 
-KAFKA_BROKER_URL = "localhost:9092"
+# KAFKA_BROKER_URL = "localhost:9092"
+KAFKA_BROKER_URL = "kafka:9092"
 KAFKA_TOPIC = "driver-schedule-updates"
 KAFKA_ADMIN_CLIENT = "flask-admin-client"
 
@@ -23,15 +24,16 @@ app = Flask(__name__)
 
 CORS(app)
 
-user_URL = "http://localhost:5000/user"
-schedule_URL = "http://localhost:5002/schedule"
-order_URL = "http://localhost:5001/order"
-delivery_URL = "http://localhost:5003/delivery"
+user_URL = "http://user:3000"
+schedule_URL = "http://schedule:3000"
+order_URL = "http://order:3000"
+delivery_URL = "http://delivery:3000"
 availability_URL = "https://personal-6fbyxkeb.outsystemscloud.com/DriverAPI_REST/rest/Driver/Addorupdate_availability"
 
 
 # RabbitMQ
-rabbit_host = "localhost"
+# rabbit_host = "localhost"
+rabbit_host = "rabbitmq"
 rabbit_port = 5672
 exchange_name = "notification_topic"
 exchange_type = "topic"
@@ -65,7 +67,7 @@ def update_order(order_id, delivery_id, delivery_status="Assigned To Driver"):
 def get_customer_info(customer_id):
     user_information = invoke_http(user_URL + "/customer/" + str(customer_id), method='GET')
     print("user_information:", user_information["data"])
-    return user_information["data"]
+    return user_information
 
 def assign_driver(desired_timeslot_details):
     assigned_driver = invoke_http(schedule_URL, json=desired_timeslot_details, method='POST')
@@ -81,15 +83,26 @@ def update_availability(availability_details):
 
 def check_driver_delivery_assignment(driver_id):
     assignments = invoke_http(schedule_URL + "?driver_id=" + str(driver_id), method='GET')
-    return assignments["data"]
+    return assignments
+
+def get_deliveries_by_driver_id(driver_id):
+    deliveries = invoke_http(delivery_URL + "?driver_id=" + str(driver_id), method='GET')
+    deliveries["data"]["timeslot"] =  convert_to_unix(deliveries["data"]["timeslot"])
+    return deliveries
+
+def get_order(order_id):
+    order = invoke_http(order_URL + "/api/orders/" + str(order_id), method='GET')
+    return order
+
+
+
+
 
 def process_place_delivery_request(delivery_request):
     #1 get the user info
     user_id = delivery_request["user_id"]
-    user_information = get_user_info(user_id)
+    user_information = get_customer_info(user_id)
     user_address = user_information["address"]
-
-
 
     #2 send the desired timeslot to schedule service
     # time to be in unix timestamp
@@ -381,6 +394,55 @@ def update_delivery_request():
                 "message": "place_delivery_request.py internal error: " + ex_str
             }), 500
 
+
+# interface Delivery {
+#   id: string;
+#   delivery_id: string;
+#   driver_id: string;
+#   timeslot: number; // Unix timestamp
+#   location: string;
+#   status: DeliveryStatus;
+# }
+@app.route("/deliveries", methods=['GET'])
+def get_assigned_deliveries():
+    response=[]
+    try:
+    # 1. Get deliveries by driver id
+        driver_id = request.args.get('driver_id')
+        if driver_id:
+            deliveries = get_deliveries_by_driver_id(driver_id)["data"]
+            # deliveries = jsonify(deliveries)
+            for delivery in deliveries:
+                response.append({
+                    "delivery_id": delivery["id"],
+                    "timeslot": delivery["timeslot"],
+                    "location": delivery["location"],
+                })
+        else:
+            return jsonify({
+                "code": 400,
+                "message": "Invalid request"
+            }), 400
+
+    # 2. Get status from order for the delivery
+        for delivery in response:
+            order = get_order(delivery["id"])["data"]
+            delivery["status"] = order["status"]  
+
+        return jsonify({
+            "code":200,
+            "data": response
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "code": 500,
+            "message": "Internal server error: " + str(e)
+        }), 500
+
+
+
+
+    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

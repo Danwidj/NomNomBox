@@ -1,0 +1,89 @@
+version: "3.8"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: broker
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      command: >
+        sh -c "sleep 5 &&
+        kafka-topics --bootstrap-server broker:9092 --create --topic driver-schedule-updates --replication-factor 1 --partitions 1"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  ####################################
+  # RabbitMQ: The messaging broker
+  ####################################
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - esd-net
+
+  manage_deliveries:
+    image: NomNomBox/manage_deliveries:latest
+    build:
+      context: ./manage_deliveries
+      dockerfile: ./manage_deliveries/dockerfile
+    ports:
+      - "5000:5000"
+
+  driver_frontend:
+    image: NomNomBox/driver_frontend:latest
+    build:
+      context: ./UI_Delivery
+      dockerfile: ./UI_Delivery/dockerfile
+    ports:
+      - "3000:3000"
+
+  order:
+    image: NomNomBox/order:latest
+    build:
+      context: ./order
+      dockerfile: ./order/Dockerfile
+    ports:
+      - "5001:5001"
+
+networks:
+  default:
+    driver: bridge
+    name: nomnombox-net
+
+volumes:
+  rabbitmq_data:
+    name: rabbitmq_data
+  kafka_data:
+    name: kafka_data
+  redis_data:
+    name: redis_data

@@ -65,6 +65,7 @@ def get_delivery_by_time(start_time, end_time):
         )
     return jsonify({"code": 404, "message": "There are no deliveries for this time period."}), 404
 
+
 def get_delivery_by_driver(driver_id):
     delivery_list = db.session.scalars(db.select(Delivery).filter(Delivery.driver_id == driver_id)).all()
 

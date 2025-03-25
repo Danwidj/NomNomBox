@@ -23,7 +23,6 @@ type DeliveryStatus =
 
 // Define delivery interface
 interface Delivery {
-  id: string;
   delivery_id: string;
   driver_id: string;
   timeslot: number; // Unix timestamp
@@ -42,8 +41,12 @@ export default function DeliveryList() {
     const fetchDeliveries = async () => {
       try {
         // Replace with your actual API endpoint
-        const response = await fetch("/api/driver-deliveries");
-        const data = await response.json();
+        const driver_id = 1;
+        const response = await fetch(
+          `/manage-deliveries?driver_id=${driver_id}`
+        );
+        const jsonResponse= await response.json();
+        const data = jsonResponse.data;
 
         // All deliveries initially have "Assigned to Driver" status
         const formattedDeliveries = data.map((delivery: any) => ({
@@ -57,7 +60,6 @@ export default function DeliveryList() {
         // Fallback to sample data for demo purposes
         setDeliveries([
           {
-            id: "1",
             delivery_id: "DEL-1001",
             driver_id: "DRV-001",
             timeslot: 1678886400,
@@ -65,7 +67,6 @@ export default function DeliveryList() {
             status: "Assigned to Driver",
           },
           {
-            id: "2",
             delivery_id: "DEL-1002",
             driver_id: "DRV-001",
             timeslot: 1678890000,
@@ -73,7 +74,6 @@ export default function DeliveryList() {
             status: "Assigned to Driver",
           },
           {
-            id: "3",
             delivery_id: "DEL-1003",
             driver_id: "DRV-001",
             timeslot: 1678893600,
@@ -129,7 +129,7 @@ export default function DeliveryList() {
       );
 
       // Send update to backend API
-      await fetch("/api/update-delivery-status", {
+      await fetch("manage_deliveries/deliveries", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
