@@ -43,7 +43,7 @@ export default function DeliveryList() {
         // Replace with your actual API endpoint
         const driver_id = 1;
         const response = await fetch(
-          `http://manage-deliveries:3000/deliveries?driver_id=${driver_id}`
+          `http://localhost:5000/deliveries?driver_id=${driver_id}`
         );
         const jsonResponse = await response.json();
         const data = jsonResponse.data;
@@ -131,7 +131,7 @@ export default function DeliveryList() {
       );
 
       // Send update to backend API
-      await fetch("manage_deliveries/deliveries", {
+      await fetch("http://localhost:5000/deliveries", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

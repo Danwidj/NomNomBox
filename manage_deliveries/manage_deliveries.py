@@ -12,6 +12,7 @@ import sys
 from kafka import KafkaProducer
 from contextlib import asynccontextmanager
 import asyncio
+import traceback
 
 # KAFKA_BROKER_URL = "localhost:9092"
 KAFKA_BROKER_URL = "kafka:9092"
@@ -24,10 +25,10 @@ app = Flask(__name__)
 
 CORS(app)
 
-user_URL = "http://user:3000"
-schedule_URL = "http://schedule:3000"
-order_URL = "http://order:3000"
-delivery_URL = "http://delivery:3000"
+user_URL = "http://user:5000"
+schedule_URL = "http://schedule:5000"
+order_URL = "http://order:5003"
+delivery_URL = "http://delivery:5000"
 availability_URL = "https://personal-6fbyxkeb.outsystemscloud.com/DriverAPI_REST/rest/Driver/Addorupdate_availability"
 
 
@@ -60,7 +61,7 @@ def connectAMQP():
 
 def update_order(order_id, delivery_id, delivery_status="Assigned To Driver"):
     order["deliveryId"] = delivery_id
-    order["deliveryStatus"] = delivery_status
+    order["status"] = delivery_status
     order = invoke_http(order_URL + "/order/" + str(order_id), method='PATCH')
     return order
 
@@ -86,8 +87,10 @@ def check_driver_delivery_assignment(driver_id):
     return assignments
 
 def get_deliveries_by_driver_id(driver_id):
-    deliveries = invoke_http(delivery_URL + "?driver_id=" + str(driver_id), method='GET')
-    deliveries["data"]["timeslot"] =  convert_to_unix(deliveries["data"]["timeslot"])
+    deliveries = invoke_http(delivery_URL + "/delivery?driver_id=" + str(driver_id), method='GET')
+    deliveries = deliveries["data"]["deliveries"]
+    for delivery in deliveries:
+        delivery["timeslot"] = convert_to_unix(delivery["timeslot"])
     return deliveries
 
 def get_order(order_id):
@@ -218,7 +221,13 @@ def post_message():
         return jsonify({"error": str(e)}), 500
 
 def convert_to_unix(timestamp: str) -> int:
-    dt = datetime.fromisoformat(timestamp)
+    # Define the format that matches the 'Sat, 08 Mar 2025 11:00:00 GMT' timestamp
+    timestamp_format = "%a, %d %b %Y %H:%M:%S GMT"
+    
+    # Parse the timestamp using the defined format
+    dt = datetime.strptime(timestamp, timestamp_format)
+    
+    # Return the Unix timestamp
     return int(dt.timestamp())
 
 @app.route("/availability", methods=["POST"])
@@ -410,7 +419,7 @@ def get_assigned_deliveries():
     # 1. Get deliveries by driver id
         driver_id = request.args.get('driver_id')
         if driver_id:
-            deliveries = get_deliveries_by_driver_id(driver_id)["data"]
+            deliveries = get_deliveries_by_driver_id(driver_id)
             # deliveries = jsonify(deliveries)
             for delivery in deliveries:
                 response.append({
@@ -423,17 +432,27 @@ def get_assigned_deliveries():
                 "code": 400,
                 "message": "Invalid request"
             }), 400
-
+        orders=[]
     # 2. Get status from order for the delivery
         for delivery in response:
-            order = get_order(delivery["id"])["data"]
-            delivery["status"] = order["status"]  
+            order = get_order(delivery["delivery_id"])
+            orders.append(order)
+            # if order["code"] == 404:
+            #     return jsonify({
+            #         "code": 404,
+            #         "message": "Order not found"
+            #     }), 404
+            # print("order:", order)
+            # delivery["status"] = order["status"]  
 
         return jsonify({
             "code":200,
-            "data": response
+            "data": orders
         }), 200
     except Exception as e:
+        print("Error:", str(e))  # Print simple error message
+        traceback.print_exc()  # Print full stack trace for debugging
+        
         return jsonify({
             "code": 500,
             "message": "Internal server error: " + str(e)

@@ -72,7 +72,15 @@ services:
       context: ./order
       dockerfile: Dockerfile
     ports:
-      - "5001:5001"
+      - "5001:5003"
+
+  delivery:
+    image: NomNomBox/delivery:latest
+    build:
+      context: ./delivery
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5000"
 
   # Add the UI_customer service
   customer_frontend:

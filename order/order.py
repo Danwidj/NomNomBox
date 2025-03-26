@@ -117,7 +117,7 @@ def get_orders_by_customer(customer_id):
 
     
 @app.route("/api/orders/{orderId}", methods=["PATCH"])
-def place_orderr():
+def update_order():
     try:
         data = request.json
         required_fields = ["orderId"]
@@ -199,4 +199,4 @@ scheduler.add_job(run_cleanup_job, "interval", minutes=3)
 scheduler.start()
 
 if __name__ == "__main__":
-    app.run(port=5003, debug=True)
+    app.run(host="0.0.0.0", port=5003, debug=True)
