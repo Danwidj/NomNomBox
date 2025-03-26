@@ -29,6 +29,7 @@ services:
         kafka-topics --bootstrap-server broker:9092 --create --topic driver-schedule-updates --replication-factor 1 --partitions 1"
     volumes:
       - kafka_data:/var/lib/kafka/data
+  
   redis:
     image: redis:latest
     container_name: redis
@@ -72,6 +73,31 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5001:5001"
+
+  # Add the UI_customer service
+  customer_frontend:
+    image: NomNomBox/customer_frontend:latest
+    build:
+      context: ./UI_customer
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_CUSTOMER_API_URL=http://customer:5002
+      - VITE_ORDER_API_URL=http://order:5001
+      - VITE_MANAGE_DELIVERIES_URL=http://manage_deliveries:5000
+    depends_on:
+      - order
+      - customer
+
+  # Add the customer service
+  customer:
+    image: NomNomBox/customer:latest
+    build:
+      context: ./customer
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5002"
 
 networks:
   default:

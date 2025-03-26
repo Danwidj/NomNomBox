@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5002'; // Adjust if your backend is on a different URL
+// Use the service name from docker-compose.yml instead of localhost
+const API_URL = 'http://customer:5002';
 
 const customerApi = {
   // Register a new customer
