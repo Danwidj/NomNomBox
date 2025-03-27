@@ -10,8 +10,8 @@ COPY . .
 # Install dependencies from requirements.txt
 RUN pip install -r requirements.txt
 
-# Expose port 5002 (same as Flask)
-EXPOSE 5002
+# Expose port 5006 (same as Flask)
+EXPOSE 5006
 
 # Command to run the microservice
 CMD ["python", "inventory_service.py"]

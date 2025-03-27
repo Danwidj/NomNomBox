@@ -17,10 +17,10 @@
 
         <label>Dietary Preferences:</label>
         <div class="dietary-preferences">
-          <div 
-            v-for="(tag, index) in availableDietaryTags" 
+          <div
+            v-for="(tag, index) in availableDietaryTags"
             :key="index"
-            :class="['tag', { 'selected': isTagSelected(tag) }]"
+            :class="['tag', { selected: isTagSelected(tag) }]"
             @click="toggleDietaryTag(tag)"
           >
             {{ tag }}
@@ -35,177 +35,178 @@
 </template>
 
 <script>
-import customerApi from "@/api/customerApi";
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import customerApi from '@/api/customerApi'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 export default {
-  name: "EditProfile",
+  name: 'EditProfile',
   setup() {
-    const router = useRouter();
+    const router = useRouter()
     const customer = ref({
-      customerId: "",
-      name: "",
-      email: "",
-      address: "",
-      phone: "",
+      customerId: '',
+      name: '',
+      email: '',
+      address: '',
+      phone: '',
       dietary_preferences: [],
-    });
+    })
 
     const availableDietaryTags = ref([
-      "Vegetarian",
-      "Vegan",
-      "Gluten-Free",
-      "Dairy-Free",
-      "Nut-Free",
-      "Low-Carb",
-      "Keto",
-      "Paleo",
-      "Pescatarian",
-      "Organic",
-      "Plant-Based" // Including this since it appears in your current data
-    ]);
+      'Vegetarian',
+      'Vegan',
+      'Gluten-Free',
+      'Dairy-Free',
+      'Nut-Free',
+      'Low-Carb',
+      'Keto',
+      'Paleo',
+      'Pescatarian',
+      'Organic',
+      'Plant-Based', // Including this since it appears in your current data
+    ])
 
     onMounted(async () => {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
-      
+      const token = localStorage.getItem('token')
+      const userId = localStorage.getItem('userId')
+
       if (!token || !userId) {
-        console.error("User is not authenticated");
-        router.push('/login');
-        return;
+        console.error('User is not authenticated')
+        router.push('/login')
+        return
       }
-      
+
       try {
-        await fetchUserData(userId, token);
-        await fetchDietaryTags();
+        await fetchUserData(userId, token)
+        await fetchDietaryTags()
       } catch (error) {
-        console.error("Failed to load profile:", error);
+        console.error('Failed to load profile:', error)
       }
-    });
-    
+    })
+
     const fetchUserData = async (customerId, token) => {
       try {
-        const response = await customerApi.getCustomerDetails(customerId, token);
-        console.log("Customer data response:", response);
-        
+        const response = await customerApi.getCustomerDetails(customerId, token)
+        console.log('Customer data response:', response)
+
         if (response && response.data && response.data.data) {
-          customer.value = response.data.data;
-          
+          customer.value = response.data.data
+
           // If dietary_preferences is a string, convert it to an array
           if (typeof customer.value.dietary_preferences === 'string') {
             customer.value.dietary_preferences = customer.value.dietary_preferences
               .split(',')
-              .map(pref => pref.trim())
-              .filter(pref => pref);
+              .map((pref) => pref.trim())
+              .filter((pref) => pref)
           }
-          
+
           // Ensure dietary_preferences is an array
           if (!Array.isArray(customer.value.dietary_preferences)) {
-            customer.value.dietary_preferences = [];
+            customer.value.dietary_preferences = []
           }
         } else {
-          console.error("Failed to fetch customer data");
+          console.error('Failed to fetch customer data')
         }
       } catch (error) {
-        console.error("Error fetching customer data:", error);
+        console.error('Error fetching customer data:', error)
         if (error.response && error.response.status === 401) {
           // Token expired or invalid
-          localStorage.removeItem('token');
-          localStorage.removeItem('isAuthenticated');
-          localStorage.removeItem('userId');
-          router.push('/login');
+          localStorage.removeItem('token')
+          localStorage.removeItem('isAuthenticated')
+          localStorage.removeItem('userId')
+          router.push('/login')
         }
       }
-    };
+    }
 
     const fetchDietaryTags = async () => {
       try {
         // Attempt to fetch tags from API - same as in SignUpView
-        const response = await fetch("http://127.0.0.1:5004/inventory");
-        const data = await response.json();
-        
+        const response = await fetch('http://localhost:5004/inventory')
+        const data = await response.json()
+
         if (data.code === 200) {
-          const allTags = data.data.flatMap(product => product.dietaryTags || []);
-          availableDietaryTags.value = [...new Set(allTags)];
+          const allTags = data.data.flatMap((product) => product.dietaryTags || [])
+          availableDietaryTags.value = [...new Set(allTags)]
         }
       } catch (error) {
-        console.error("Error fetching dietary tags:", error);
+        console.error('Error fetching dietary tags:', error)
         // Keep using the default tags defined earlier
       }
-    };
+    }
 
     const isTagSelected = (tag) => {
-      return customer.value.dietary_preferences && 
-             customer.value.dietary_preferences.includes(tag);
-    };
+      return customer.value.dietary_preferences && customer.value.dietary_preferences.includes(tag)
+    }
 
     const toggleDietaryTag = (tag) => {
       if (!Array.isArray(customer.value.dietary_preferences)) {
-        customer.value.dietary_preferences = [];
+        customer.value.dietary_preferences = []
       }
-      
+
       if (isTagSelected(tag)) {
-        customer.value.dietary_preferences = customer.value.dietary_preferences.filter(t => t !== tag);
+        customer.value.dietary_preferences = customer.value.dietary_preferences.filter(
+          (t) => t !== tag,
+        )
       } else {
-        customer.value.dietary_preferences.push(tag);
+        customer.value.dietary_preferences.push(tag)
       }
-    };
+    }
 
     const updateProfile = async () => {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
-      
+      const token = localStorage.getItem('token')
+      const userId = localStorage.getItem('userId')
+
       if (!token || !userId) {
-        console.error("User is not authenticated");
-        router.push('/login');
-        return;
+        console.error('User is not authenticated')
+        router.push('/login')
+        return
       }
-      
+
       try {
         // Ensure dietary_preferences is an array
         if (!Array.isArray(customer.value.dietary_preferences)) {
-          customer.value.dietary_preferences = [];
+          customer.value.dietary_preferences = []
         }
-        
+
         // Prepare data for API
         const updateData = {
           name: customer.value.name,
           address: customer.value.address,
           phone: customer.value.phone,
-          dietary_preferences: customer.value.dietary_preferences
-        };
-        
-        console.log("Sending update:", updateData);
-        const token = localStorage.getItem('token');
-        const response = await customerApi.updateCustomerDetails(userId, updateData, token);
-        console.log("Update response:", response);
-        
-        alert("Profile Updated Successfully!");
-        router.push("/profile");
+          dietary_preferences: customer.value.dietary_preferences,
+        }
+
+        console.log('Sending update:', updateData)
+        const token = localStorage.getItem('token')
+        const response = await customerApi.updateCustomerDetails(userId, updateData, token)
+        console.log('Update response:', response)
+
+        alert('Profile Updated Successfully!')
+        router.push('/profile')
       } catch (error) {
-        console.error("Error updating profile:", error);
-        
+        console.error('Error updating profile:', error)
+
         if (error.response) {
-          console.error("Response data:", error.response.data);
-          console.error("Response status:", error.response.status);
-          
+          console.error('Response data:', error.response.data)
+          console.error('Response status:', error.response.status)
+
           if (error.response.status === 401) {
-            alert("Your session has expired. Please login again.");
-            localStorage.removeItem('token');
-            localStorage.removeItem('userId');
-            router.push('/login');
-            return;
+            alert('Your session has expired. Please login again.')
+            localStorage.removeItem('token')
+            localStorage.removeItem('userId')
+            router.push('/login')
+            return
           }
         }
-        
-        alert("Failed to update profile. Please try again.");
+
+        alert('Failed to update profile. Please try again.')
       }
-    };
+    }
 
     const cancelEdit = () => {
-      router.push("/profile");
-    };
+      router.push('/profile')
+    }
 
     return {
       customer,
@@ -213,10 +214,10 @@ export default {
       isTagSelected,
       toggleDietaryTag,
       updateProfile,
-      cancelEdit
-    };
-  }
-};
+      cancelEdit,
+    }
+  },
+}
 </script>
 
 <style scoped>

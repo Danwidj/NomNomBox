@@ -38,3 +38,5 @@ yarn.lock
 *.pid
 *.log
 docker-compose.override.yml
+
+serviceAccountKey.json

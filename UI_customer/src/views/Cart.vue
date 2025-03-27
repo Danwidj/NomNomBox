@@ -14,7 +14,7 @@
         <div class="cart-items">
           <div v-for="item in cart" :key="item.id" class="cart-item">
             <img :src="item.image" :alt="item.name" class="cart-item-image" />
-            
+
             <div class="cart-item-details">
               <h3 class="cart-item-title">{{ item.name }}</h3>
               <p class="cart-item-description">{{ item.description }}</p>
@@ -23,18 +23,17 @@
               <div class="quantity-controls">
                 <button class="btn quantity-btn" @click="decreaseQuantity(item)">−</button>
                 <span class="quantity">{{ item.quantity }}</span>
-                <button 
-                  class="btn quantity-btn" 
-                  @click="increaseQuantity(item)" 
+                <button
+                  class="btn quantity-btn"
+                  @click="increaseQuantity(item)"
                   :disabled="item.quantity >= (stockData[item.id] || item.stock)"
                 >
                   +
-                </button>             
+                </button>
               </div>
 
-              <p class="stock-info">
-                Available: {{ stockData[item.id] || item.stock }} in stock
-              </p><br>
+              <p class="stock-info">Available: {{ stockData[item.id] || item.stock }} in stock</p>
+              <br />
               <p class="cart-item-total">
                 Subtotal: <strong>$ {{ (item.price * item.quantity).toFixed(2) }}</strong>
               </p>
@@ -48,11 +47,11 @@
         <div class="cart-summary">
           <h3>Order Summary</h3>
           <div class="summary-item">
-            <span>Total Items:</span> 
+            <span>Total Items:</span>
             <span>{{ totalItems }}</span>
           </div>
           <div class="summary-item">
-            <span>Total Price:</span> 
+            <span>Total Price:</span>
             <span class="total-price">$ {{ totalPrice.toFixed(2) }}</span>
           </div>
 
@@ -73,170 +72,172 @@
   </div>
 
   <div class="customer-id">
-    <p>Customer ID: <strong>{{ customerId }}</strong></p>
+    <p>
+      Customer ID: <strong>{{ customerId }}</strong>
+    </p>
   </div>
 </template>
 
 <script>
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe } from '@stripe/stripe-js'
 
 export default {
-  name: "CartPage",
+  name: 'CartPage',
   data() {
     return {
       cart: [],
       stockData: {}, // To store stock levels from Firestore
       stripe: null,
-      customerId: "1", // or null if you prefer
-      selectedTimeSlot: null // track user-selected delivery slot
-    };
+      customerId: '1', // or null if you prefer
+      selectedTimeSlot: null, // track user-selected delivery slot
+    }
   },
   computed: {
     totalItems() {
-      return this.cart.reduce((total, item) => total + item.quantity, 0);
+      return this.cart.reduce((total, item) => total + item.quantity, 0)
     },
     totalPrice() {
-      return this.cart.reduce((total, item) => total + item.price * item.quantity, 0);
+      return this.cart.reduce((total, item) => total + item.price * item.quantity, 0)
     },
     // Generate 30-minute increment time slots from 08:00 to 22:00
     timeSlots() {
-      const slots = [];
-      let start = 8 * 60; // 08:00 in minutes
-      const end = 22 * 60; // 22:00 in minutes
+      const slots = []
+      let start = 8 * 60 // 08:00 in minutes
+      const end = 22 * 60 // 22:00 in minutes
 
       while (start < end) {
-        let endSlot = start + 30;
-        const startHour = String(Math.floor(start / 60)).padStart(2, "0");
-        const startMin = String(start % 60).padStart(2, "0");
-        const endHour = String(Math.floor(endSlot / 60)).padStart(2, "0");
-        const endMin = String(endSlot % 60).padStart(2, "0");
+        let endSlot = start + 30
+        const startHour = String(Math.floor(start / 60)).padStart(2, '0')
+        const startMin = String(start % 60).padStart(2, '0')
+        const endHour = String(Math.floor(endSlot / 60)).padStart(2, '0')
+        const endMin = String(endSlot % 60).padStart(2, '0')
 
-        slots.push(`${startHour}:${startMin} - ${endHour}:${endMin}`);
-        start += 30;
+        slots.push(`${startHour}:${startMin} - ${endHour}:${endMin}`)
+        start += 30
       }
-      return slots;
-    }
+      return slots
+    },
   },
   created() {
-    this.loadCart();
-    this.loadCustomerId();
-    this.initStripe(); 
+    this.loadCart()
+    this.loadCustomerId()
+    this.initStripe()
   },
   methods: {
     async initStripe() {
       try {
-          const response = await fetch("http://localhost:5004/api/payment/public-key");
-          const data = await response.json();
+        const response = await fetch('http://localhost:5004/api/payment/public-key')
+        const data = await response.json()
 
-          if (!data.publicKey) {
-              throw new Error("Stripe public key is missing from the backend.");
-          }
-          console.log("Using Stripe Public Key:", data.publicKey);
+        if (!data.publicKey) {
+          throw new Error('Stripe public key is missing from the backend.')
+        }
+        console.log('Using Stripe Public Key:', data.publicKey)
 
-          this.stripe = await loadStripe(data.publicKey);
-          console.log("Stripe initialized successfully");
+        this.stripe = await loadStripe(data.publicKey)
+        console.log('Stripe initialized successfully')
       } catch (error) {
-          console.error("Stripe initialization error:", error);
+        console.error('Stripe initialization error:', error)
       }
     },
     async loadCart() {
-      this.cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
-      
+      this.cart = JSON.parse(sessionStorage.getItem('shoppingCart')) || []
+
       try {
-        const response = await fetch("http://127.0.0.1:5006/inventory"); // Inventory API
-        const data = await response.json();
+        const response = await fetch('http://localhost:5006/inventory') // Inventory API
+        const data = await response.json()
 
         if (data.code === 200) {
           this.stockData = data.data.reduce((acc, item) => {
-            acc[item.id] = item.numAvailable;
-            return acc;
-          }, {});
+            acc[item.id] = item.numAvailable
+            return acc
+          }, {})
         } else {
-          console.error("No stock data available");
+          console.error('No stock data available')
         }
       } catch (error) {
-        console.error("Error fetching stock data:", error);
+        console.error('Error fetching stock data:', error)
       }
     },
     saveCart() {
-      sessionStorage.setItem("shoppingCart", JSON.stringify(this.cart));
+      sessionStorage.setItem('shoppingCart', JSON.stringify(this.cart))
     },
     loadCustomerId() {
-      this.customerId = sessionStorage.getItem("customerId") || "1"; // or null if desired
+      this.customerId = sessionStorage.getItem('customerId') || '1' // or null if desired
     },
     saveCustomerId(id) {
-      sessionStorage.setItem("customerId", id);
-      this.customerId = id;
+      sessionStorage.setItem('customerId', id)
+      this.customerId = id
     },
     removeItem(itemId) {
-      this.cart = this.cart.filter(item => item.id !== itemId);
-      this.saveCart();
+      this.cart = this.cart.filter((item) => item.id !== itemId)
+      this.saveCart()
     },
     increaseQuantity(item) {
-      const availableStock = this.stockData[item.id] ?? item.numAvailable ?? 0;
+      const availableStock = this.stockData[item.id] ?? item.numAvailable ?? 0
       if (availableStock === 0) {
-        console.error(`Stock not found for item ID: ${item.id}`);
-        alert("Stock information is unavailable. Please try again later.");
-        return;
+        console.error(`Stock not found for item ID: ${item.id}`)
+        alert('Stock information is unavailable. Please try again later.')
+        return
       }
       if (item.quantity < availableStock) {
-        item.quantity++;
-        this.saveCart();
+        item.quantity++
+        this.saveCart()
       } else {
-        alert(`Only ${availableStock} left in stock!`);
+        alert(`Only ${availableStock} left in stock!`)
       }
     },
     decreaseQuantity(item) {
       if (item.quantity > 1) {
-        item.quantity--;
+        item.quantity--
       } else {
-        this.removeItem(item.id);
+        this.removeItem(item.id)
       }
-      this.saveCart();
+      this.saveCart()
     },
     async proceedToCheckout() {
       try {
         // Prepare the checkout data with customerId, items, totalPrice, & time slot
         const checkoutData = {
           customerId: this.customerId,
-          items: this.cart.map(item => ({
+          items: this.cart.map((item) => ({
             id: item.id,
             name: item.name,
             price: item.price,
-            quantity: item.quantity
+            quantity: item.quantity,
           })),
           totalPrice: this.totalPrice,
-          timeSlot: this.selectedTimeSlot // pass the selected time slot
-        };
-        console.log("Checkout Request:", checkoutData);
+          timeSlot: this.selectedTimeSlot, // pass the selected time slot
+        }
+        console.log('Checkout Request:', checkoutData)
         // **Store in sessionStorage** so we can retrieve it after payment success
-        sessionStorage.setItem("deliveryTimeSlot", this.selectedTimeSlot);
+        sessionStorage.setItem('deliveryTimeSlot', this.selectedTimeSlot)
         // Call the composite service endpoint
-        const compositeResponse = await fetch("http://localhost:5005/order/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(checkoutData)
-        });
-        const compositeData = await compositeResponse.json();
+        const compositeResponse = await fetch('http://localhost:5005/order/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(checkoutData),
+        })
+        const compositeData = await compositeResponse.json()
 
         if (!compositeResponse.ok) {
-          throw new Error(compositeData.message);
+          throw new Error(compositeData.message)
         }
 
         // Retrieve the Stripe session ID from the composite response.
-        const stripeSessionId = compositeData.sessionId;
+        const stripeSessionId = compositeData.sessionId
 
         // Redirect to Stripe Checkout using the session ID.
-        const result = await this.stripe.redirectToCheckout({ sessionId: stripeSessionId });
+        const result = await this.stripe.redirectToCheckout({ sessionId: stripeSessionId })
         if (result.error) {
-          alert(result.error.message);
+          alert(result.error.message)
         }
       } catch (error) {
-        alert("Error processing checkout: " + error.message);
+        alert('Error processing checkout: ' + error.message)
       }
-    }
-  }
-};
+    },
+  },
+}
 </script>
 
 <style scoped>

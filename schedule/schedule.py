@@ -27,7 +27,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 
 db = SQLAlchemy(app)
 
-KAFKA_BROKER_URL = "localhost:9092"
+KAFKA_BROKER_URL = "kafka:9092"
 KAFKA_TOPIC = "driver-schedule-updates"
 
 messages = []
@@ -118,6 +118,7 @@ def start_kafka_consumer():
                     group_id="my-group",
                     auto_offset_reset="earliest",
                     heartbeat_interval_ms=1000,
+                    api_version=(2, 6, 0)
                 )
             consume(consumer)  # Start consuming messages
 
@@ -157,12 +158,16 @@ thread.start()
 def create_timeslot_assignment():
 
     data = request.get_json()
+    if data is None:
+        return jsonify({"code": 400, "message": "Invalid JSON format in the request.", "request": request.data.decode('utf-8')}), 400
+
     # expected input is 
     # {
         # "desired_timeslot": 1234
     # }
     desired_timeslot = data["desired_timeslot"]
-    desired_timeslot = datetime.fromtimestamp(int(desired_timeslot), timezone.utc)
+    # passed time is seconds since epoch. convert to milliseconds for conversion to work properly
+    desired_timeslot = datetime.fromtimestamp(int(desired_timeslot/1000), timezone.utc)
     print(desired_timeslot)
     assignable_drivers = db.session.scalars(db.select(Schedule).filter(Schedule.timeslot == desired_timeslot, Schedule.assigned == False)).all()
     if assignable_drivers == []:
@@ -171,6 +176,7 @@ def create_timeslot_assignment():
                 {
                     "code": 404,
                     "message": "No drivers are available for the desired timeslot.",
+                    "desired_timeslot": desired_timeslot
                 }
             ),
             404

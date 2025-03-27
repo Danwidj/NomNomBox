@@ -7,30 +7,25 @@
       <input v-model="password" type="password" placeholder="Password" required />
       <input v-model="address" type="text" placeholder="Address" />
       <input v-model="phone" type="text" placeholder="Phone Number" />
-      
+
       <!-- Dietary Preferences Custom Multi-Select -->
       <div class="preferences-section">
         <label>Dietary Preferences (Optional)</label>
         <div class="dropdown-container">
-          <div 
-            class="dropdown-header" 
-            @click="toggleDropdown"
-          >
+          <div class="dropdown-header" @click="toggleDropdown">
             <span v-if="selectedDietaryPreferences.length === 0">
               Select preferences (if any)
             </span>
-            <span v-else>
-              {{ selectedDietaryPreferences.length }} preference(s) selected
-            </span>
+            <span v-else> {{ selectedDietaryPreferences.length }} preference(s) selected </span>
             <span class="dropdown-arrow">▼</span>
           </div>
-          
+
           <div class="dropdown-list" v-if="isDropdownOpen">
-            <div 
-              v-for="tag in availableDietaryTags" 
-              :key="tag" 
+            <div
+              v-for="tag in availableDietaryTags"
+              :key="tag"
               class="dropdown-item"
-              :class="{ 'selected': selectedDietaryPreferences.includes(tag) }"
+              :class="{ selected: selectedDietaryPreferences.includes(tag) }"
               @click.stop="toggleTag(tag)"
             >
               <div class="checkbox">
@@ -40,23 +35,19 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Display selected tags -->
         <div v-if="selectedDietaryPreferences.length > 0" class="selected-tags">
           <span>Selected: </span>
           <div class="tag-list">
-            <span 
-              v-for="tag in selectedDietaryPreferences" 
-              :key="tag" 
-              class="dietary-tag"
-            >
+            <span v-for="tag in selectedDietaryPreferences" :key="tag" class="dietary-tag">
               {{ tag }}
               <span @click="removeTag(tag)" class="remove-tag">×</span>
             </span>
           </div>
         </div>
       </div>
-      
+
       <button type="submit">Sign Up</button>
     </form>
 
@@ -68,88 +59,88 @@
 </template>
 
 <script>
-import customerApi from "../api/customerApi";
-import { useRouter } from "vue-router";
+import customerApi from '../api/customerApi'
+import { useRouter } from 'vue-router'
 
 export default {
   setup() {
-    const router = useRouter();
-    return { router };
+    const router = useRouter()
+    return { router }
   },
   data() {
     return {
-      name: "",
-      email: "",
-      password: "",
-      address: "",
-      phone: "",
+      name: '',
+      email: '',
+      password: '',
+      address: '',
+      phone: '',
       selectedDietaryPreferences: [],
       availableDietaryTags: [
-        "Vegetarian",
-        "Vegan",
-        "Gluten-Free",
-        "Dairy-Free",
-        "Nut-Free",
-        "Low-Carb",
-        "Keto",
-        "Paleo",
-        "Pescatarian",
-        "Organic"
+        'Vegetarian',
+        'Vegan',
+        'Gluten-Free',
+        'Dairy-Free',
+        'Nut-Free',
+        'Low-Carb',
+        'Keto',
+        'Paleo',
+        'Pescatarian',
+        'Organic',
       ],
-      isDropdownOpen: false
-    };
+      isDropdownOpen: false,
+    }
   },
   created() {
-    this.fetchDietaryTags();
-    
+    this.fetchDietaryTags()
+
     // Add click event listener to close dropdown when clicking outside
-    document.addEventListener('click', this.closeDropdown);
+    document.addEventListener('click', this.closeDropdown)
   },
   unmounted() {
     // Remove event listener when component is destroyed
-    document.removeEventListener('click', this.closeDropdown);
+    document.removeEventListener('click', this.closeDropdown)
   },
   methods: {
     toggleDropdown(event) {
       // Prevent event from bubbling up to document
-      event.stopPropagation();
-      this.isDropdownOpen = !this.isDropdownOpen;
+      event.stopPropagation()
+      this.isDropdownOpen = !this.isDropdownOpen
     },
     closeDropdown() {
-      this.isDropdownOpen = false;
+      this.isDropdownOpen = false
     },
     toggleTag(tag) {
       if (this.selectedDietaryPreferences.includes(tag)) {
-        this.removeTag(tag);
+        this.removeTag(tag)
       } else {
-        this.selectedDietaryPreferences.push(tag);
+        this.selectedDietaryPreferences.push(tag)
       }
     },
     removeTag(tag) {
-      this.selectedDietaryPreferences = this.selectedDietaryPreferences.filter(t => t !== tag);
+      this.selectedDietaryPreferences = this.selectedDietaryPreferences.filter((t) => t !== tag)
     },
     async fetchDietaryTags() {
       try {
         // Attempt to fetch tags from API
-        const response = await fetch("http://127.0.0.1:5004/inventory");
-        const data = await response.json();
-        
+        const response = await fetch('http://localhost:5006/inventory')
+        const data = await response.json()
+
         if (data.code === 200) {
-          const allTags = data.data.flatMap(product => product.dietaryTags || []);
-          this.availableDietaryTags = [...new Set(allTags)];
+          const allTags = data.data.flatMap((product) => product.dietaryTags || [])
+          this.availableDietaryTags = [...new Set(allTags)]
         }
       } catch (error) {
-        console.error("Error fetching dietary tags:", error);
+        console.error('Error fetching dietary tags:', error)
         // Keep using the default tags defined in data()
       }
     },
     async signUp() {
       try {
         // Log the data being sent to verify
-        console.log("About to send registration data:");
-        console.log("Email:", this.email);
-        console.log("Name:", this.name);
-        console.log("Dietary Preferences:", this.selectedDietaryPreferences);
+        console.log('About to send registration data:')
+        console.log('Email:', this.email)
+        console.log('Name:', this.name)
+        console.log('Dietary Preferences:', this.selectedDietaryPreferences)
 
         const userData = {
           email: this.email,
@@ -158,30 +149,30 @@ export default {
           address: this.address,
           phone: this.phone,
           dietary_preferences: this.selectedDietaryPreferences,
-        };
+        }
 
-        console.log("Full user data:", userData);
+        console.log('Full user data:', userData)
 
-        const response = await customerApi.register(userData);
+        const response = await customerApi.register(userData)
 
         if (response.status === 201) {
-          alert("Registration successful!");
-          this.router.push("/login");
+          alert('Registration successful!')
+          this.router.push('/login')
         } else {
-          alert(response.data.message);
+          alert(response.data.message)
         }
       } catch (error) {
-        console.error("Sign-up failed:", error.response?.data || error);
+        console.error('Sign-up failed:', error.response?.data || error)
         // Display the specific error message from the backend if available
         if (error.response?.data?.message) {
-          alert(error.response.data.message);
+          alert(error.response.data.message)
         } else {
-          alert("Sign-up failed. Please try again.");
+          alert('Sign-up failed. Please try again.')
         }
       }
-    }
+    },
   },
-};
+}
 </script>
 
 <style scoped>
@@ -278,7 +269,7 @@ input {
 .checkbox-inner {
   width: 10px;
   height: 10px;
-  background-color: #4CAF50;
+  background-color: #4caf50;
   border-radius: 2px;
 }
 

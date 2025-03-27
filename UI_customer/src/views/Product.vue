@@ -51,7 +51,9 @@
         </div>
         <div v-else class="grid-container">
           <div v-for="product in filteredProducts" :key="product.id" class="product-card">
-            <div class="product-image"><img :src="product.imageURL" :alt="product.name" class="product-image" /></div>
+            <div class="product-image">
+              <img :src="product.imageURL" :alt="product.name" class="product-image" />
+            </div>
             <div class="product-info">
               <h3 class="product-title">{{ product.name }}</h3>
               <p class="product-description">{{ product.description }}</p>
@@ -75,134 +77,135 @@
 
   <!-- Product Detail Modal -->
   <div v-if="showModal" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <h2>{{ selectedProduct.name }}</h2>
-        <p><strong>Price:</strong> ${{ selectedProduct.price.toFixed(2) }}</p>
-        <p><strong>Ingredients:</strong></p>
-        <ul>
-          <li v-for="ingredient in selectedProduct.ingredients" :key="ingredient">{{ ingredient }}</li>
-        </ul>
-        <p><strong>Preparation:</strong> {{ selectedProduct.preparation }}</p>
-        <button class="close-modal" @click="closeModal">Close</button>
-      </div>
+    <div class="modal" @click.stop>
+      <h2>{{ selectedProduct.name }}</h2>
+      <p><strong>Price:</strong> ${{ selectedProduct.price.toFixed(2) }}</p>
+      <p><strong>Ingredients:</strong></p>
+      <ul>
+        <li v-for="ingredient in selectedProduct.ingredients" :key="ingredient">
+          {{ ingredient }}
+        </li>
+      </ul>
+      <p><strong>Preparation:</strong> {{ selectedProduct.preparation }}</p>
+      <button class="close-modal" @click="closeModal">Close</button>
     </div>
+  </div>
 </template>
 
 <script>
 export default {
-  name: "ProductPage",
+  name: 'ProductPage',
   data() {
     return {
-      searchTerm: "",
-      sortOption: "default",
+      searchTerm: '',
+      sortOption: 'default',
       selectedTags: [], // Stores selected dietary tags
-      priceFilter: "",  // New drop-down filter for price range
+      priceFilter: '', // New drop-down filter for price range
       products: [], // Initially empty, filled from API
       loading: true,
       showModal: false, // Controls modal visibility
-      selectedProduct: {} // Stores the product selected for detail view
-    };
+      selectedProduct: {}, // Stores the product selected for detail view
+    }
   },
   computed: {
     uniqueDietaryTags() {
       // Get all unique dietary tags from all products
-      const allTags = this.products.flatMap(product => product.dietaryTags || []);
-      return [...new Set(allTags)];
+      const allTags = this.products.flatMap((product) => product.dietaryTags || [])
+      return [...new Set(allTags)]
     },
     filteredProducts() {
-      let result = this.products;
+      let result = this.products
 
       // Search Filter
-      if (this.searchTerm.trim() !== "")
-        result = result.filter(product =>
-          product.name.toLowerCase().includes(this.searchTerm.toLowerCase())
-        );
+      if (this.searchTerm.trim() !== '')
+        result = result.filter((product) =>
+          product.name.toLowerCase().includes(this.searchTerm.toLowerCase()),
+        )
 
       // Price Filter using the dropdown selection
       if (this.priceFilter) {
-        if (this.priceFilter === "lessThan5")
-          result = result.filter(product => product.price < 5);
-        else if (this.priceFilter === "5to10")
-          result = result.filter(product => product.price >= 5 && product.price <= 10);
-        else if (this.priceFilter === "10to15")
-          result = result.filter(product => product.price >= 10 && product.price <= 15);
-        else if (this.priceFilter === "15to20")
-          result = result.filter(product => product.price >= 15 && product.price <= 20);
-        else if (this.priceFilter === "above25")
-          result = result.filter(product => product.price > 20);
+        if (this.priceFilter === 'lessThan5') result = result.filter((product) => product.price < 5)
+        else if (this.priceFilter === '5to10')
+          result = result.filter((product) => product.price >= 5 && product.price <= 10)
+        else if (this.priceFilter === '10to15')
+          result = result.filter((product) => product.price >= 10 && product.price <= 15)
+        else if (this.priceFilter === '15to20')
+          result = result.filter((product) => product.price >= 15 && product.price <= 20)
+        else if (this.priceFilter === 'above25')
+          result = result.filter((product) => product.price > 20)
       }
 
       // Dietary Tags Filter (show if product has at least one selected tag)
       if (this.selectedTags.length > 0) {
-        result = result.filter(product =>
-          product.dietaryTags.some(tag => this.selectedTags.includes(tag))
-        );
+        result = result.filter((product) =>
+          product.dietaryTags.some((tag) => this.selectedTags.includes(tag)),
+        )
       }
 
       // Sorting
-      if (this.sortOption === "priceLowToHigh")
-        result = result.slice().sort((a, b) => a.price - b.price);
-      else if (this.sortOption === "priceHighToLow")
-        result = result.slice().sort((a, b) => b.price - a.price);
+      if (this.sortOption === 'priceLowToHigh')
+        result = result.slice().sort((a, b) => a.price - b.price)
+      else if (this.sortOption === 'priceHighToLow')
+        result = result.slice().sort((a, b) => b.price - a.price)
 
-      return result;
-    }
+      return result
+    },
   },
   created() {
-    this.fetchProducts();
+    this.fetchProducts()
   },
   methods: {
     async fetchProducts() {
       try {
-        const response = await fetch("http://127.0.0.1:5006/inventory"); // Fetch from Inventory API
-        const data = await response.json();
+        const response = await fetch('http://localhost:5006/inventory') // Fetch from Inventory API
+        const data = await response.json()
         if (data.code === 200) {
-          this.products = data.data.filter(product => product.numAvailable > 0); // Only keep in-stock items
+          this.products = data.data.filter((product) => product.numAvailable > 0) // Only keep in-stock items
         } else {
-          console.error("No products available");
+          console.error('No products available')
         }
       } catch (error) {
-        console.error("Error fetching inventory:", error);
+        console.error('Error fetching inventory:', error)
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
     addToCart(product) {
-         // Check if the user is logged in (this is a simple example; adapt as needed)
-    const user = sessionStorage.getItem("customerId");
-    if (!user) {
-      // If the user isn't logged in, redirect them to the login page.
-      // Using Vue Router's push method.
-      this.$router.push("/login");
-      return; // Stop further execution
-    }
-
-      let cart = JSON.parse(sessionStorage.getItem("shoppingCart")) || [];
-      let existingItem = cart.find(item => item.id === product.id);
-
-      if (existingItem) {
-        existingItem.quantity++;
-      } else {
-        cart.push({ ...product, quantity: 1 });
+      // Check if the user is logged in (this is a simple example; adapt as needed)
+      const user = sessionStorage.getItem('customerId')
+      if (!user) {
+        // If the user isn't logged in, redirect them to the login page.
+        // Using Vue Router's push method.
+        this.$router.push('/login')
+        return // Stop further execution
       }
 
-      sessionStorage.setItem("shoppingCart", JSON.stringify(cart));
-      alert(`${product.name} added to cart!`);
+      let cart = JSON.parse(sessionStorage.getItem('shoppingCart')) || []
+      let existingItem = cart.find((item) => item.id === product.id)
+
+      if (existingItem) {
+        existingItem.quantity++
+      } else {
+        cart.push({ ...product, quantity: 1 })
+      }
+
+      sessionStorage.setItem('shoppingCart', JSON.stringify(cart))
+      alert(`${product.name} added to cart!`)
     },
     clearFilters() {
-      this.selectedTags = [];
-      this.priceFilter = "";
+      this.selectedTags = []
+      this.priceFilter = ''
     },
     viewProductDetail(product) {
-      this.selectedProduct = product;
-      this.showModal = true;
+      this.selectedProduct = product
+      this.showModal = true
     },
     closeModal() {
-      this.showModal = false;
-      this.selectedProduct = {};
-    }
-  }
-};
+      this.showModal = false
+      this.selectedProduct = {}
+    },
+  },
+}
 </script>
 
 <style scoped>
@@ -246,7 +249,7 @@ export default {
   font-size: 0.9rem;
   border: none;
   border-radius: 4px;
-  background: #ccc ;
+  background: #ccc;
   cursor: pointer;
 }
 
@@ -339,7 +342,8 @@ export default {
 }
 
 /* Add to Cart Button */
-.add-to-cart, .view-details {
+.add-to-cart,
+.view-details {
   background: #ff9900;
   border: none;
   color: white;
@@ -350,7 +354,8 @@ export default {
   transition: 0.3s;
 }
 
-.add-to-cart:hover, .view-details:hover {
+.add-to-cart:hover,
+.view-details:hover {
   background: #e68a00;
 }
 

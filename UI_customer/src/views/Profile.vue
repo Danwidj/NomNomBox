@@ -8,12 +8,13 @@
           <p><strong>Email:</strong> {{ customer.email }}</p>
           <p><strong>Address:</strong> {{ customer.address }}</p>
           <p><strong>Phone:</strong> {{ customer.phone }}</p>
-          <p><strong>Dietary Preferences: </strong> 
-              <span v-if="customer.dietary_preferences.length">
-                {{ customer.dietary_preferences.join(', ') }}
-              </span>
-              <span v-else>No preferences specified</span>
-          </p>          
+          <p>
+            <strong>Dietary Preferences: </strong>
+            <span v-if="customer.dietary_preferences.length">
+              {{ customer.dietary_preferences.join(', ') }}
+            </span>
+            <span v-else>No preferences specified</span>
+          </p>
           <router-link to="/edit-profile" class="btn">Edit Profile</router-link>
         </div>
       </div>
@@ -51,122 +52,123 @@
 </template>
 
 <script>
-import customerApi from "@/api/customerApi";
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import customerApi from '@/api/customerApi'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 export default {
-  name: "ProfilePage",
+  name: 'ProfilePage',
   setup() {
-    const router = useRouter();
+    const router = useRouter()
     const customer = ref({
-      customerId: "",
-      name: "",
-      email: "",
-      address: "",
-      phone: "",
+      customerId: '',
+      name: '',
+      email: '',
+      address: '',
+      phone: '',
       dietary_preferences: [],
-    });
-    const orders = ref([]);
+    })
+    const orders = ref([])
 
     onMounted(async () => {
-  const token = localStorage.getItem('token');
-  const customerId = localStorage.getItem('userId'); // Ensure it matches what backend expects
+      const token = localStorage.getItem('token')
+      const customerId = localStorage.getItem('userId') // Ensure it matches what backend expects
 
-  if (!token || !customerId) {
-    console.error("User is not authenticated");
-    router.push('/login');
-    return;
-  }
-
-  try {
-    console.log("Fetching customer profile...");
-    await fetchUserData(customerId, token); // Fetch customer details
-    console.log("Fetching order history...");
-    await fetchOrderHistory(customerId); // Fetch order history
-  } catch (error) {
-    console.error("Failed to load profile:", error);
-  }
-});
-    const fetchUserData = async (customerId, token) => {
-  try {
-    const response = await fetch(`http://localhost:5002/customer/${customerId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}` // Pass token for authentication
+      if (!token || !customerId) {
+        console.error('User is not authenticated')
+        router.push('/login')
+        return
       }
-    });
 
-    const data = await response.json();
-    console.log("Customer API Response:", data); // Debugging
+      try {
+        console.log('Fetching customer profile...')
+        await fetchUserData(customerId, token) // Fetch customer details
+        console.log('Fetching order history...')
+        await fetchOrderHistory(customerId) // Fetch order history
+      } catch (error) {
+        console.error('Failed to load profile:', error)
+      }
+    })
+    const fetchUserData = async (customerId, token) => {
+      try {
+        const response = await fetch(`http://localhost:5003/customer/${customerId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`, // Pass token for authentication
+          },
+        })
 
-    if (data.code === 200) {
-      customer.value = data.data;
-      console.log("Customer Data Loaded:", customer.value); // Debugging
-    } else {
-      console.error("Failed to fetch customer data:", data.message);
+        const data = await response.json()
+        console.log('Customer API Response:', data) // Debugging
+
+        if (data.code === 200) {
+          customer.value = data.data
+          console.log('Customer Data Loaded:', customer.value) // Debugging
+        } else {
+          console.error('Failed to fetch customer data:', data.message)
+        }
+      } catch (error) {
+        console.error('Error fetching customer data:', error)
+      }
     }
-  } catch (error) {
-    console.error("Error fetching customer data:", error);
-  }
-};
 
     const fetchOrderHistory = async (customerId) => {
       try {
-        const response = await fetch(`http://localhost:5003/api/orders/customer/${customerId}`);
-        const data = await response.json();
+        const response = await fetch(
+          `http://localhost:5001/api/orders/customer/${customerId}`,
+        )
+        const data = await response.json()
 
         if (data.code === 200) {
-          orders.value = data.data;
+          orders.value = data.data
         } else {
-          console.error("No orders found for this user.");
+          console.error('No orders found for this user.')
         }
       } catch (error) {
-        console.error("Error fetching order history:", error);
+        console.error('Error fetching order history:', error)
       }
-    };
+    }
 
     const formatDate = (timestamp) => {
-  if (!timestamp) return "Unknown Date";
+      if (!timestamp) return 'Unknown Date'
 
-  // Handle Firestore Timestamp (if it exists)
-  if (typeof timestamp === "object" && "seconds" in timestamp) {
-    const date = new Date(timestamp.seconds * 1000);
-    return date.toLocaleString("en-US", {
-      timeZone: "Asia/Singapore",
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true
-    });
-  }
+      // Handle Firestore Timestamp (if it exists)
+      if (typeof timestamp === 'object' && 'seconds' in timestamp) {
+        const date = new Date(timestamp.seconds * 1000)
+        return date.toLocaleString('en-US', {
+          timeZone: 'Asia/Singapore',
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
+      }
 
-  // Handle JavaScript Date (if stored as a string)
-  const date = new Date(timestamp);
-  if (isNaN(date)) return "Unknown Date"; // Fallback for invalid dates
+      // Handle JavaScript Date (if stored as a string)
+      const date = new Date(timestamp)
+      if (isNaN(date)) return 'Unknown Date' // Fallback for invalid dates
 
-  return date.toLocaleString("en-US", {
-    timeZone: "Asia/Singapore",
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true
-  });
-};
+      return date.toLocaleString('en-US', {
+        timeZone: 'Asia/Singapore',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      })
+    }
 
-
-    return { customer, orders, formatDate };
-  }
-};
+    return { customer, orders, formatDate }
+  },
+}
 </script>
 
 <style scoped>
@@ -204,7 +206,7 @@ export default {
   object-fit: cover;
 }
 
-p{
+p {
   text-align: left;
 }
 .profile-info {

@@ -1,0 +1,12 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy the Python script into the container
+COPY amqp_setup.py .
+
+# Install necessary dependencies (e.g., pika for AMQP)
+RUN pip install pika
+
+# Set the default command (could be overridden by docker-compose)
+CMD ["python", "amqp_setup.py"]

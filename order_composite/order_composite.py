@@ -11,13 +11,13 @@ app = Flask(__name__)
 CORS(app)  # This will allow all origins by default
 
 # RabbitMQ Configuration
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")  # Use environment variables, change to esd-rabbit after dockerised
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")  # Use environment variables, change to esd-rabbit after dockerised
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))  # Use environment variable
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")  # Use env var
 ROUTING_KEY = "order.payment_success"
 
 # Make sure the needed environment variable is defined (such as customer service, where you're getting email):
-CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", "http://localhost:5002/customer")
+CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", "http://customer:5002/customer")
 
 def publish_message(message):
     try:
@@ -49,7 +49,7 @@ def publish_message(message):
 def checkout():
     data = request.json
     for item in data["items"]:
-        inv_response = requests.get(f"http://localhost:5006/inventory/{item['id']}")
+        inv_response = requests.get(f"http://inventory:5006/inventory/{item['id']}")
 
         print(f"Inventory API Response for {item['id']}: {inv_response.status_code} - {inv_response.text}")  # Debugging
 
@@ -77,7 +77,7 @@ def checkout():
 
     # 2. Place the order via your order atomic service
     order_response = requests.post(
-        "http://localhost:5003/api/orders/place", json=data
+        "http://order:5003/api/orders/place", json=data
     )
     if order_response.status_code != 201:
         return jsonify({
@@ -94,7 +94,7 @@ def checkout():
         "items": data["items"]
     }
     payment_response = requests.post(
-        "http://localhost:5004/api/payment/create", json=payment_payload
+        "http://payment:5004/api/payment/create", json=payment_payload
     )
     if payment_response.status_code != 201:
         return jsonify({
@@ -123,7 +123,7 @@ def payment_success():
         print(f"Received payment success request: {data}")
 
         # Fetch payment status
-        payment_response = requests.get(f"http://localhost:5004/api/payment/status?session_id={data['session_id']}")
+        payment_response = requests.get(f"http://payment:5004/api/payment/status?session_id={data['session_id']}")
         print(f"Payment Status Response: {payment_response.status_code} - {payment_response.text}")
 
         if payment_response.status_code != 200:
@@ -137,7 +137,7 @@ def payment_success():
 
         # Update order status
         update_order_response = requests.post(
-            "http://localhost:5003/api/orders/update-payment",
+            "http://order:5003/api/orders/update-payment",
             json={"orderId": data["orderId"], "paymentIntentId": data["session_id"]}
         )
         print(f"Order Update Response: {update_order_response.status_code} - {update_order_response.text}")
@@ -148,7 +148,7 @@ def payment_success():
         print(f"Order successfully marked as paid: {data['orderId']}")
 
         # Fetch order details to update inventory
-        order_response = requests.get(f"http://localhost:5003/api/orders/{data['orderId']}")
+        order_response = requests.get(f"http://order:5003/api/orders/{data['orderId']}")
         print(f"Order Details Response: {order_response.status_code} - {order_response.text}")
 
         if order_response.status_code != 200:
@@ -167,7 +167,7 @@ def payment_success():
             print(f"Fetching inventory for {item['id']}...")
 
             # Get stock from inventory service
-            inventory_response = requests.get(f"http://localhost:5006/inventory/{item['id']}")
+            inventory_response = requests.get(f"http://inventory:5006/inventory/{item['id']}")
 
             if inventory_response.status_code != 200:
                 print(f"Error fetching stock for {item['id']}: {inventory_response.text}")
@@ -187,7 +187,7 @@ def payment_success():
             update_payload = {"stock": new_stock}  # Keep this as "stock" since inventory API expects "stock"
 
             inv_update_response = requests.put(
-                f"http://localhost:5006/inventory/{item['id']}", json=update_payload
+                f"http://inventory:5006/inventory/{item['id']}", json=update_payload
             )
 
             print(f"Inventory Update Response for {item['id']}: {inv_update_response.status_code} - {inv_update_response.text}")

@@ -3,8 +3,11 @@ import stripe
 import os
 import requests  # Import requests to communicate with the order service
 from firebase_admin import firestore
+from dotenv import load_dotenv
 
 from flask_cors import CORS
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  #  allows frontend acces
@@ -13,7 +16,7 @@ CORS(app)  #  allows frontend acces
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # Order Service API URL
-ORDER_SERVICE_URL = "http://localhost:5003/api/orders/update-payment"
+ORDER_SERVICE_URL = "http://order:5003/api/orders/update-payment"
 
 #  Create a Stripe Checkout Session (Instead of PaymentIntent)
 @app.route("/api/payment/create", methods=["POST"])
