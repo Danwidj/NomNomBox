@@ -6,6 +6,8 @@ import os
 import stripe
 import firebase_admin
 from firebase_admin import firestore
+import logging
+import traceback
 app = Flask(__name__)
 CORS(app)  # Allow CORS for frontend access
 
@@ -83,20 +85,55 @@ def update_payment():
         return jsonify({"code": 500, "message": f"Error updating order: {str(e)}"}), 500
 
 # Get Order by Order ID
-@app.route("/api/orders/<string:order_id>", methods=["GET"])
+@app.route("/api/orders/<string:order_id>", methods=["GET", "PATCH"])
 def get_order(order_id):
-    try:
-        order_ref = db.collection("Orders").document(order_id)
-        order_doc = order_ref.get()
 
-        if not order_doc.exists:
-            return jsonify({"code": 404, "message": "Order not found"}), 404
+    if request.method == "GET":
+        try:
+            order_ref = db.collection("Orders").document(order_id)
+            order_doc = order_ref.get()
 
-        order_data = order_doc.to_dict()
-        return jsonify({"code": 200, "data": order_data}), 200
+            if not order_doc.exists:
+                return jsonify({"code": 404, "message": "Order not found"}), 404
 
-    except Exception as e:
-        return jsonify({"code": 500, "message": f"Error fetching order: {str(e)}"}), 500
+            order_data = order_doc.to_dict()
+            return jsonify({"code": 200, "data": order_data}), 200
+
+        except Exception as e:
+            return jsonify({"code": 500, "message": f"Error fetching order: {str(e)}"}), 500
+    
+    elif request.method == "PATCH":        
+        
+        try:
+            data = request.json
+
+            order_ref = db.collection("Orders").document(order_id)
+
+            if not order_ref.get().exists:
+                return jsonify({"code": 404, "message": "Order not found"}), 404
+
+            fields_to_update = {}
+
+            for key, value in data.items():
+                if key != "orderId":
+                    fields_to_update[key] = value
+            if fields_to_update:
+                fields_to_update["updatedAt"] = firestore.SERVER_TIMESTAMP
+                order_ref.update(fields_to_update)      
+
+        
+
+            return jsonify({
+                "code": 201,
+                "message": "Order updated successfully",
+                "orderId": order_ref.id
+                
+            }), 201
+
+        except Exception as e:
+            logging.error("Exception occurred while updating order:\n%s", traceback.format_exc())
+            return jsonify({"code": 500, "message": f"Error placing order: {str(e)}"}), 500
+
 
 
 # Get All Orders for a Customer
@@ -115,38 +152,8 @@ def get_orders_by_customer(customer_id):
         return jsonify({"code": 500, "message": f"Error fetching orders: {str(e)}"}), 500
     
 
-    
-@app.route("/api/orders/{orderId}", methods=["PATCH"])
-def update_order():
-    try:
-        data = request.json
-        required_fields = ["orderId"]
 
-        if not all(field in data for field in required_fields):
-            return jsonify({"code": 400, "message": "Missing required fields"}), 400
 
-        order_ref = db.collection("Orders").document(data["orderId"])
-
-        fields_to_update = {}
-
-        for key, value in data.items():
-            if key != "orderId":
-                fields_to_update[key] = value
-        if fields_to_update:
-            fields_to_update["updatedAt"] = firestore.SERVER_TIMESTAMP
-            order_ref.update(fields_to_update)      
-
-      
-
-        return jsonify({
-            "code": 201,
-            "message": "Order placed successfully",
-            "orderId": order_ref.id
-            
-        }), 201
-
-    except Exception as e:
-        return jsonify({"code": 500, "message": f"Error placing order: {str(e)}"}), 500
 
 from datetime import datetime, timedelta
 from google.cloud import firestore as gcf 

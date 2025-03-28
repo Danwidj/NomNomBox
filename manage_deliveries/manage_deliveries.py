@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 import asyncio
 import traceback
 import requests
+import logging
 
 # KAFKA_BROKER_URL = "localhost:9092"
 KAFKA_BROKER_URL = "kafka:9092"
@@ -61,10 +62,14 @@ def connectAMQP():
         exit(1) # terminate
 
 def update_order(order_id, delivery_id, delivery_status="Assigned To Driver"):
-    order["deliveryId"] = delivery_id
-    order["status"] = delivery_status
-    order = invoke_http(order_URL + "/order/" + str(order_id), method='PATCH')
-    return order
+    try: 
+        order = {}
+        order["deliveryId"] = delivery_id
+        order["status"] = delivery_status
+        order_response = invoke_http(order_URL + "/api/orders/" + str(order_id), json=order, method='PATCH')
+        return order_response
+    except Exception as e:
+        logging.error("Exception occurred while updating order:\n%s", traceback.format_exc())
 
 def get_customer_info(customer_id, token):
     headers = {
@@ -208,7 +213,7 @@ def process_place_delivery_request(delivery_request):
 
 
         if connection is None or not amqp_lib.is_connection_open(connection):
-            print("attempting to connect to amqp")
+            logging.info("attempting to connect to amqp")
             connectAMQP()
             
 
@@ -217,24 +222,23 @@ def process_place_delivery_request(delivery_request):
         # time is in unix timestamp    
         #convert order dict to string
         notification_message = {
-            "status": delivery_status,
-            "email": user_information["email"],
+            "status": "Assigned to Driver",
+            "email": user_information["data"]["email"],
             "delivery_time": desired_delivery_time,
             "order_id": order_id,
-            "name": user_information["Name"],
+            "name": user_information["data"]["name"],
         }
         notification_message = json.dumps(notification_message)
 
-        delivery_status = order["delivery_status"]
-        if delivery_status == "Assigned To Driver":
-            # Inform the notification microservice
-            print("  Publish message with routing_key=delivery.assigned\n")
-            channel.basic_publish(
-                exchange=exchange_name,
-                routing_key="delivery.assigned",
-                body=notification_message,
-                properties=pika.BasicProperties(delivery_mode=2),
-            )
+
+        # Inform the notification microservice
+        logging.info("  Publish message with routing_key=delivery.assigned\n")
+        channel.basic_publish(
+            exchange=exchange_name,
+            routing_key="delivery.assigned",
+            body=notification_message,
+            properties=pika.BasicProperties(delivery_mode=2),
+        )
         return jsonify({
             "code": 200,
             "message": "Delivery request placed successfully",
@@ -246,6 +250,7 @@ def process_place_delivery_request(delivery_request):
     
     except Exception as e:
         error_details = traceback.format_exc()
+        logging.error("Exception occurred while processing delivery request:\n%s", error_details)
         return jsonify({
             "code": 500,
             "message": "Internal server error: " + str(e),
@@ -256,7 +261,7 @@ producer = None
 def start_producer():
     global producer
     producer = KafkaProducer(
-        bootstrap_servers='localhost:9092', api_version=(2, 6, 0))
+        bootstrap_servers='kafka:9092', api_version=(2, 6, 0))
     # Get cluster layout and initial topic/partition leadership information
     print("producer abt to start")
     # producer.start()

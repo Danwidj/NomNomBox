@@ -144,8 +144,8 @@ export default {
             display,
             startTime: startTime,
             endTime: endTime,
-            unixStart: slotDate.getTime(),
-            unixEnd: slotDate.getTime() + 30 * 60 * 1000, // Add 30 minutes
+            unixStart: slotDate.getTime() / 1000,
+            unixEnd: slotDate.getTime() + 30 * 60, // Add 30 minutes
           })
         })
       }

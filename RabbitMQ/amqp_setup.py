@@ -5,6 +5,7 @@ A standalone script to create exchanges and queues on RabbitMQ.
 """
 
 import pika
+import time
 
 amqp_host = "rabbitmq"
 amqp_port = 5672
@@ -49,23 +50,31 @@ def create_queue(channel, exchange_name, queue_name, routing_key):
     )
 
 
-channel = create_exchange(
-    hostname=amqp_host,
-    port=amqp_port,
-    exchange_name=exchange_name,
-    exchange_type=exchange_type,
-)
+while True:
+    try:
+        channel = create_exchange(
+            hostname=amqp_host,
+            port=amqp_port,
+            exchange_name=exchange_name,
+            exchange_type=exchange_type,
+        )
 
-# Both order payment success and delivery notifications will use the same queue
-create_queue(
-    channel=channel,
-    exchange_name=exchange_name,
-    queue_name="notification_queue",
-    routing_key="order.payment_success", # change to notification.email if you want to test notification_service.py
-)
-create_queue(
-    channel=channel,
-    exchange_name=exchange_name,
-    queue_name="notification_queue",
-    routing_key="delivery.*", # change to notification.email if you want to test notification_service.py
-)
+        # Both order payment success and delivery notifications will use the same queue
+        create_queue(
+            channel=channel,
+            exchange_name=exchange_name,
+            queue_name="notification_queue",
+            routing_key="order.payment_success", # change to notification.email if you want to test notification_service.py
+        )
+        create_queue(
+            channel=channel,
+            exchange_name=exchange_name,
+            queue_name="notification_queue",
+            routing_key="delivery.*", # change to notification.email if you want to test notification_service.py
+        )
+
+        break
+    except pika.exceptions.AMQPConnectionError:
+        print("AMQP connection error. Retrying in 10 seconds...")
+        time.sleep(10)       
+        continue

@@ -9,11 +9,12 @@ from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 import requests  # Import the requests library
 import string
+import logging
 
 load_dotenv()  # Load environment variables from .env file
 
 # RabbitMQ connection details
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "127.0.0.1")  # or esd-rabbit once on docker
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")  # or esd-rabbit once on docker
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "notification_topic")
 NOTIFICATIONS_QUEUE = os.getenv("NOTIFICATIONS_QUEUE", "notification_queue") # get Notifications queue name
@@ -57,7 +58,7 @@ def send_email(recipient_email, subject, message_body):
         # Send email
         server.send_message(msg)
         server.quit()
-
+        logging.info(f"Email sent successfully to {recipient_email}")
         print(f"Email sent successfully to {recipient_email}")
         return True
     except Exception as e:
@@ -116,12 +117,14 @@ def process_message(ch, method, properties, body):
 
         else:
             print(f"Unknown routing key: {routing_key}. Skipping.")
+            logging.error(f"Unknown routing key: {routing_key}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         if email_success:
             ch.basic_ack(delivery_tag=method.delivery_tag)
             print("Message acknowledged")
+            logging.info("Message acknowledged and email sent")
         else:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
             print("Message negative acknowledged (requeued)")
@@ -131,6 +134,7 @@ def process_message(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         print(f"Error processing message: {e}")
+        logging.error(f"Error processing message: {e}")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
 

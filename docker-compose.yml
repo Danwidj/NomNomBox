@@ -52,7 +52,7 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
-  rabbitmq-setup:
+  rabbitmq_setup:
     image: NomNomBox/rabbitmq-setup:latest
     build:
       context: ./RabbitMQ
@@ -150,6 +150,14 @@ services:
       - "5007:5001"
     depends_on:
       - kafka
+
+  notifications:
+    image: NomNomBox/notifications:latest
+    build:
+      context: ./notifications
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
 
 networks:
   default:

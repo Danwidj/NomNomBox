@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "notifications/notifications_consumer.py"]
+CMD ["python", "notifications_consumer.py"]

@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 from dotenv import load_dotenv, dotenv_values
 from datetime import datetime, timezone, timedelta
+import logging
+import traceback
 
 app = Flask(__name__)
 
@@ -27,7 +29,7 @@ class Delivery(db.Model):
 
 
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, nullable=False)
+    order_id = db.Column(db.String(20), nullable=False)
     timeslot = db.Column(db.TIMESTAMP(timezone=True), nullable=False)
     location = db.Column(db.Text, nullable=False)
     driver_id = db.Column(db.Integer, nullable=False)
@@ -138,7 +140,7 @@ def create_delivery():
         db.session.add(delivery)
         db.session.commit()
     except Exception as e:
-        print("Exception:{}".format(str(e)))
+        logging.error("Exception occurred while creating delivery:\n%s", traceback.format_exc())
         return (
             jsonify(
                 {

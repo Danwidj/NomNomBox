@@ -167,7 +167,7 @@ def create_timeslot_assignment():
     # }
     desired_timeslot = data["desired_timeslot"]
     # passed time is seconds since epoch. convert to milliseconds for conversion to work properly
-    desired_timeslot = datetime.fromtimestamp(int(desired_timeslot/1000), timezone.utc)
+    desired_timeslot = datetime.fromtimestamp(int(desired_timeslot), timezone.utc)
     print(desired_timeslot)
     assignable_drivers = db.session.scalars(db.select(Schedule).filter(Schedule.timeslot == desired_timeslot, Schedule.assigned == False)).all()
     if assignable_drivers == []:
