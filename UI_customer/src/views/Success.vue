@@ -144,8 +144,8 @@ export default {
             display,
             startTime: startTime,
             endTime: endTime,
-            unixStart: slotDate.getTime() / 1000,
-            unixEnd: slotDate.getTime() + 30 * 60, // Add 30 minutes
+            unixStart: Math.floor(slotDate.getTime() / 1000), // Ensure it's a whole number
+            unixEnd: Math.floor((slotDate.getTime() + 30 * 60 * 1000) / 1000), // Add 30 minutes and convert to seconds
           })
         })
       }
@@ -155,8 +155,25 @@ export default {
       this.errorMessage = ''
     },
     async scheduleDelivery() {
-      if (!this.selectedSlot || !this.orderId || !this.userId) {
+      if (!this.selectedSlot) {
         this.errorMessage = 'Please select a delivery slot'
+        return
+      }
+
+      if (!this.orderId) {
+        this.errorMessage = 'Order ID is not available'
+        return
+      }
+
+      if (!this.userId) {
+        this.errorMessage = 'User ID is not available'
+        return
+      }
+
+      // Get token from storage
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+      if (!token) {
+        this.errorMessage = 'Authentication token is not available'
         return
       }
 
@@ -167,11 +184,12 @@ export default {
       }
 
       try {
+        console.log('Sending delivery request:', deliveryData)
         const response = await fetch('http://localhost:5000/place_delivery_request', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(deliveryData),
         })
@@ -181,7 +199,7 @@ export default {
         if (response.status !== 200) {
           this.errorMessage =
             result.message || 'Failed to schedule delivery. Please try another slot.'
-          this.selectedSlot = null
+          console.error('Delivery scheduling failed:', result)
           return
         }
 
@@ -190,7 +208,7 @@ export default {
         this.deliveryTime = this.selectedSlot.unixStart
 
         // Format for display
-        const deliveryDate = new Date(this.selectedSlot.unixStart)
+        const deliveryDate = new Date(this.selectedSlot.unixStart * 1000) // Convert from Unix timestamp
         this.formattedDeliveryDate = deliveryDate.toLocaleDateString('en-US', {
           weekday: 'long',
           year: 'numeric',

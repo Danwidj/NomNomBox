@@ -38,3 +38,4 @@ order/serviceAccountKey.json
 customer/.env
 inventory/.env
 order/.env
+structure.txt
