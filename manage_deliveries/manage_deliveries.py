@@ -15,18 +15,35 @@ import asyncio
 import traceback
 import requests
 import logging
-
+import firebase_admin
+from firebase_admin import credentials, firestore, auth
+import time
 # KAFKA_BROKER_URL = "localhost:9092"
 KAFKA_BROKER_URL = "kafka:9092"
 KAFKA_TOPIC = "driver-schedule-updates"
 KAFKA_ADMIN_CLIENT = "flask-admin-client"
 
+
+load_dotenv()
+
+# Get Firebase credentials
+firebase_credentials_path = os.getenv("FIREBASE_CREDENTIALS")
+firebase_api_key = os.getenv("FIREBASE_API_KEY")  # Required for REST API authentication
+
+if not firebase_credentials_path:
+    raise ValueError("Missing FIREBASE_CREDENTIALS in .env file")
+
+# Initialize Firebase if not already initialized
+if not firebase_admin._apps:
+    try:
+        cred = credentials.Certificate(firebase_credentials_path)
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        raise RuntimeError(f"Failed to initialize Firebase: {e}")
+
 app = Flask(__name__)
-
-
-
 CORS(app)
-
+db = firestore.client()
 user_URL = "http://customer:5002"
 schedule_URL = "http://schedule:5001"
 order_URL = "http://order:5003"
@@ -42,6 +59,12 @@ exchange_name = "notification_topic"
 exchange_type = "topic"
 connection = None
 channel = None
+
+# firebase_api_key = os.getenv("FIREBASE_API_KEY")
+email = os.getenv("EMAIL")
+password = os.getenv("PASSWORD")
+# logging.info("Firebase API Key: %s", firebase_api_key)
+logging.basicConfig(level=logging.INFO)
 
 def connectAMQP():
     # Use global variables to reduce number of reconnection to RabbitMQ
@@ -61,11 +84,11 @@ def connectAMQP():
         print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
         exit(1) # terminate
 
-def update_order(order_id, delivery_id, delivery_status="Assigned To Driver"):
+def update_order(order_id, delivery_id, status="Assigned To Driver"):
     try: 
         order = {}
         order["deliveryId"] = delivery_id
-        order["status"] = delivery_status
+        order["status"] = status
         order_response = invoke_http(order_URL + "/api/orders/" + str(order_id), json=order, method='PATCH')
         return order_response
     except Exception as e:
@@ -128,7 +151,11 @@ def get_deliveries_by_driver_id(driver_id):
         delivery["timeslot"] = convert_to_unix(delivery["timeslot"])
     return deliveries
 
-def get_order(order_id):
+def get_orders(order_ids):
+    order = invoke_http(order_URL + "/api/orders", json=order_ids, method='POST')
+    return order
+
+def get_order_by_id(order_id):
     order = invoke_http(order_URL + "/api/orders/" + str(order_id), method='GET')
     return order
 
@@ -416,41 +443,78 @@ def place_delivery_request():
         "message": "Invalid JSON input: " + str(request.get_data())
     }), 400
 
-    
-@app.route("/update_delivery_status", methods=['POST'])
-def update_delivery_request():
+
+@app.route("/deliveries/<int:delivery_id>", methods=['PATCH'])
+def update_delivery_status(delivery_id):
     if connection is None or not amqp_lib.is_connection_open(connection):
         print("attempting to connect to amqp")
         connectAMQP()
     # Structure of JSON request expected:
     # {
-    #     "delivery_id": 1,
-    #     "delivery_status": "Picked up by Driver"
+    #     "order_id": 1,
+    #     "status": "Picked up by Driver"
     # }
     if request.is_json:
         try:
-            update_delivery_status_request = request.get_json()
-            delivery_id = update_delivery_status_request["delivery_id"]
-            delivery_status = update_delivery_status_request["delivery_status"]
-            delivery_time = update_delivery_status_request["delivery_time"]
-            email = update_delivery_status_request["email"]
-            name = update_delivery_status_request["name"]
-            # TODO: Uncomment once order microservice is ready
-            # Update order with new status
-            # order_id = update_delivery_status_request["order_id"]
-            # update_order(delivery_id, order_id, delivery_status=delivery_status)
-            print(delivery_status)
+            update_delivery_request = request.get_json()
+            order_id = update_delivery_request["order_id"]
+            status = update_delivery_request["status"]
+            # update order with new status
+            update_response = update_order(order_id=order_id, delivery_id=delivery_id, status=status)
+            logging.info("update_response: %s", update_response)
+            if update_response["code"] == 404:
+                return jsonify({
+                    "code": 404,
+                    "message": "Order not found"
+                }), 404
+            elif update_response["code"] not in range(200, 202):
+                return jsonify({
+                    "code": 500,
+                    "message": "Failed to update order",
+                    "error": update_response
+                }), 500
+            # get order by id to get customer id
+            order = get_order_by_id(order_id)
+            customer_id = order["data"]["customerId"]
+            # get token from firebase
+            firebase_auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={firebase_api_key}"
+            payload = {"email": email, "password": password, "returnSecureToken": True}
+            response = requests.post(firebase_auth_url, json=payload)
+            if response.status_code == 200:
+                auth_data = response.json()
+                token = auth_data["idToken"]
+            else:
+                return jsonify({"code": 401, "message": "Invalid credentials while connecting to firebase for auth token", "error": response.json()}), 401
+            
+            # use token from firebase to coneect to customer service to  get customer info
+            time.sleep(2)
+            customer_info = requests.get(user_URL + "/customer/" + str(customer_id), headers={"Authorization": f"Bearer {token}"})
+            if customer_info.status_code == 404:
+                return jsonify({
+                    "code": 404,
+                    "message": "Customer not found"
+                }), 404
+            elif customer_info.status_code != 200:
+                return jsonify({
+                    "code": 500,
+                    "message": "Failed to get customer information",
+                    "error": customer_info.json()
+                }), 500
+            customer_info = customer_info.json()
+
+            logging.info("customer_info: %s", customer_info)
             notification_message = {
-                "status": delivery_status,
+                "status": status,
                 "delivery_id": delivery_id,
-                "email": email,
-                "name": name,
-                "delivery_time": delivery_time,
+                "email": customer_info["data"]["email"],
+                "name": customer_info["data"]["name"],
+                # "delivery_time": delivery_ytime,
             }
             notification_message = json.dumps(notification_message)
+            
             # publish messagae to exchange for notification service
 
-            if delivery_status == "Picked up by Driver":
+            if status == "Picked up by Driver":
                 print("  Publish message with routing_key=delivery.pickedup\n")
                 
                 channel.basic_publish(
@@ -459,7 +523,7 @@ def update_delivery_request():
                     body=notification_message,
                     properties=pika.BasicProperties(delivery_mode=2),
                 )
-            elif delivery_status == "Delivered by Driver":
+            elif status == "Delivered by Driver":
                 print("  Publish message with routing_key=delivery.delivered\n")
                 channel.basic_publish(
                     exchange=exchange_name,
@@ -468,7 +532,7 @@ def update_delivery_request():
                     properties=pika.BasicProperties(delivery_mode=2),
                 )
 
-            elif delivery_status == "Received by Customer":
+            elif status == "Received by Customer":
                 print("  Publish message with routing_key=delivery.received\n")
                 channel.basic_publish(
                     exchange=exchange_name,
@@ -477,7 +541,7 @@ def update_delivery_request():
                     properties=pika.BasicProperties(delivery_mode=2),
                 )
 
-        #TODO: update order status in database
+
             return {
                 "code": 200,
                 "message": "Delivery status updated"
@@ -488,14 +552,12 @@ def update_delivery_request():
             
         except Exception as e:
             # Unexpected error in code
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            ex_str = str(e) + " at " + str(exc_type) + ": " + fname + ": line " + str(exc_tb.tb_lineno)
-            print(ex_str)
+            logging.error("Exception occurred while updating delivery status:\n%s", traceback.format_exc())
+
 
             return jsonify({
                 "code": 500,
-                "message": "place_delivery_request.py internal error: " + ex_str
+                "message": str(e)
             }), 500
 
 
@@ -507,51 +569,65 @@ def update_delivery_request():
 #   location: string;
 #   status: DeliveryStatus;
 # }
-# @app.route("/deliveries", methods=['GET'])
-# def get_assigned_deliveries():
-#     response=[]
-#     try:
-#     # 1. Get deliveries by driver id
-#         driver_id = request.args.get('driver_id')
-#         if driver_id:
-#             deliveries = get_deliveries_by_driver_id(driver_id)
-#             # deliveries = jsonify(deliveries)
-#             for delivery in deliveries:
-#                 response.append({
-#                     "delivery_id": delivery["id"],
-#                     "timeslot": delivery["timeslot"],
-#                     "location": delivery["location"],
-#                 })
-#         else:
-#             return jsonify({
-#                 "code": 400,
-#                 "message": "Invalid request"
-#             }), 400
-#         orders=[]
-#     # 2. Get status from order for the delivery
-#         for delivery in response:
-#             order = get_order(delivery["delivery_id"])
-#             orders.append(order)
-#             # if order["code"] == 404:
-#             #     return jsonify({
-#             #         "code": 404,
-#             #         "message": "Order not found"
-#             #     }), 404
-#             # print("order:", order)
-#             # delivery["status"] = order["status"]  
+@app.route("/deliveries", methods=['GET'])
+def get_assigned_deliveries():
+    response=[]
+    order_ids = { "order_ids": [] }
+    try:
+    # 1. Get deliveries by driver id
+        driver_id = request.args.get('driver_id')
+        if driver_id:
+            deliveries = get_deliveries_by_driver_id(driver_id)
+            # deliveries = jsonify(deliveries)
+            logging.info(f"deliveries: {deliveries}")
+            for delivery in deliveries:
+                response.append({
+                    "delivery_id": delivery["id"],
+                    "timeslot": delivery["timeslot"],
+                    "location": delivery["location"],
+                    "order_id": delivery["order_id"],
+                })
+                order_ids["order_ids"].append(delivery["order_id"])
 
-#         return jsonify({
-#             "code":200,
-#             "data": orders
-#         }), 200
-#     except Exception as e:
-#         print("Error:", str(e))  # Print simple error message
-#         traceback.print_exc()  # Print full stack trace for debugging
+        else:
+            return jsonify({
+                "code": 400,
+                "message": "Invalid request"
+            }), 400
+        # orders=[]
+    # 2. Get status from order for the delivery
+    
+        logging.info(f"response from deliveries: {response}")
+        orders = get_orders(order_ids)
+        orders = orders["data"]
+        # dk if there is error in this filtering logic
+        for i in range(len(response)):
+            if "error" in orders[i].keys():
+                pass
+            else:
+                response[i]["status"] = orders[i]["data"]["status"]
+            
+            # orders.append(order)
+            # if order["code"] == 404:
+            #     return jsonify({
+            #         "code": 404,
+            #         "message": "Order not found"
+            #     }), 404
+            # print("order:", order)
+            # delivery["status"] = order["status"]  
+        logging.info(f"response from orders: {orders}")
+        return jsonify({
+            "code":200,
+            "data": response
+        }), 200
+    except Exception as e:
+        print("Error:", str(e))  # Print simple error message
+        traceback.print_exc()  # Print full stack trace for debugging
         
-#         return jsonify({
-#             "code": 500,
-#             "message": "Internal server error: " + str(e)
-#         }), 500
+        return jsonify({
+            "code": 500,
+            "message": "Internal server error: " + str(e)
+        }), 500
 
 
 

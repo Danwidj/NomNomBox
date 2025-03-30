@@ -16,18 +16,19 @@ import { Input } from "@/components/ui/input";
 
 // Define delivery status types
 type DeliveryStatus =
-  | "Assigned to Driver"
+  | "Assigned To Driver"
   | "Picked up by Driver"
   | "Delivered by Driver"
   | "Received by Customer";
 
 // Define delivery interface
 interface Delivery {
-  delivery_id: string;
+  order_id: string;
   driver_id: string;
   timeslot: number; // Unix timestamp
   location: string;
   status: DeliveryStatus;
+  delivery_id: string;
 }
 
 export default function DeliveryList() {
@@ -41,46 +42,50 @@ export default function DeliveryList() {
     const fetchDeliveries = async () => {
       try {
         // Replace with your actual API endpoint
-        const driver_id = 1;
+        const driver_id = 14;
         const response = await fetch(
           `http://localhost:5000/deliveries?driver_id=${driver_id}`
         );
+        console.log(response);
         const jsonResponse = await response.json();
         const data = jsonResponse.data;
 
         // All deliveries initially have "Assigned to Driver" status
-        const formattedDeliveries = data.map((delivery: any) => ({
-          ...delivery,
-          status: "Assigned to Driver" as DeliveryStatus,
-        }));
+        // const formattedDeliveries = data.map((delivery: Delivery) => ({
+        //   ...delivery,
+        //   // status: "Assigned to Driver" as DeliveryStatus,
+        // }));
 
-        setDeliveries(formattedDeliveries);
+        setDeliveries(data);
       } catch (error) {
         console.error("Error fetching deliveries:", error);
         // Fallback to sample data for demo purposes
-        setDeliveries([
-          {
-            delivery_id: "DEL-1001",
-            driver_id: "DRV-001",
-            timeslot: 1678886400,
-            location: "123 Main St, Anytown, CA 94123",
-            status: "Assigned to Driver",
-          },
-          {
-            delivery_id: "DEL-1002",
-            driver_id: "DRV-001",
-            timeslot: 1678890000,
-            location: "456 Oak Ave, Somewhere, CA 94124",
-            status: "Assigned to Driver",
-          },
-          {
-            delivery_id: "DEL-1003",
-            driver_id: "DRV-001",
-            timeslot: 1678893600,
-            location: "789 Pine Rd, Nowhere, CA 94125",
-            status: "Assigned to Driver",
-          },
-        ]);
+        // setDeliveries([
+        //   {
+        //     order_id: "ORD-1001",
+        //     delivery_id: "DEL-1001",
+        //     driver_id: "DRV-001",
+        //     timeslot: 1678886400,
+        //     location: "123 Main St, Anytown, CA 94123",
+        //     status: "Assigned to Driver",
+        //   },
+        //   {
+        //     order_id: "ORD-1002",
+        //     delivery_id: "DEL-1002",
+        //     driver_id: "DRV-001",
+        //     timeslot: 1678890000,
+        //     location: "456 Oak Ave, Somewhere, CA 94124",
+        //     status: "Assigned to Driver",
+        //   },
+        //   {
+        //     order_id: "ORD-1003",
+        //     delivery_id: "DEL-1003",
+        //     driver_id: "DRV-001",
+        //     timeslot: 1678893600,
+        //     location: "789 Pine Rd, Nowhere, CA 94125",
+        //     status: "Assigned to Driver",
+        //   },
+        // ]);
       } finally {
         setIsLoading(false);
       }
@@ -118,7 +123,8 @@ export default function DeliveryList() {
   // Update delivery status
   const updateDeliveryStatus = async (
     delivery_id: string,
-    newStatus: DeliveryStatus
+    newStatus: DeliveryStatus,
+    order_id: string
   ) => {
     try {
       // Update locally first for immediate UI feedback
@@ -131,13 +137,13 @@ export default function DeliveryList() {
       );
 
       // Send update to backend API
-      await fetch("http://localhost:5000/deliveries", {
-        method: "POST",
+      await fetch(`http://localhost:5000/deliveries/${delivery_id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          delivery_id,
+          order_id: order_id,
           status: newStatus,
         }),
       });
@@ -153,7 +159,7 @@ export default function DeliveryList() {
     currentStatus: DeliveryStatus
   ): DeliveryStatus | null => {
     switch (currentStatus) {
-      case "Assigned to Driver":
+      case "Assigned To Driver":
         return "Picked up by Driver";
       case "Picked up by Driver":
         return "Delivered by Driver";
@@ -180,7 +186,7 @@ export default function DeliveryList() {
   // Get status badge color and text
   const getStatusBadge = (status: DeliveryStatus) => {
     switch (status) {
-      case "Assigned to Driver":
+      case "Assigned To Driver":
         return (
           <Badge
             variant="outline"
@@ -300,12 +306,13 @@ export default function DeliveryList() {
                           onClick={() =>
                             updateDeliveryStatus(
                               delivery.delivery_id,
-                              getNextStatus(delivery.status)!
+                              getNextStatus(delivery.status)!,
+                              delivery.order_id
                             )
                           }
                         >
                           <Truck className="mr-1 h-4 w-4" />
-                          {delivery.status === "Assigned to Driver" &&
+                          {delivery.status === "Assigned To Driver" &&
                             "Pick Up"}
                           {delivery.status === "Picked up by Driver" &&
                             "Mark Delivered"}

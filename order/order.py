@@ -85,7 +85,7 @@ def update_payment():
         return jsonify({"code": 500, "message": f"Error updating order: {str(e)}"}), 500
 
 # Get Order by Order ID
-@app.route("/api/orders/<string:order_id>", methods=["GET", "PATCH"])
+@app.route("/api/orders/<string:order_id>", methods=["GET", "PATCH", "POST"])
 def get_order(order_id):
 
     if request.method == "GET":
@@ -133,6 +133,37 @@ def get_order(order_id):
         except Exception as e:
             logging.error("Exception occurred while updating order:\n%s", traceback.format_exc())
             return jsonify({"code": 500, "message": f"Error placing order: {str(e)}"}), 500
+    
+
+            
+@app.route("/api/orders", methods=["POST"])
+def get_orders():
+    try:
+# Get the list of order IDs from the request body
+        order_ids = request.json.get("order_ids", [])
+
+        if not order_ids:
+            return jsonify({"code": 400, "message": "No order_ids provided"}), 400
+        
+        # Initialize an empty list to hold the orders
+        orders = []
+
+        # Fetch each order by its order_id
+        for order_id in order_ids:
+            order_ref = db.collection("Orders").document(order_id)
+            order_doc = order_ref.get()
+
+            if order_doc.exists:
+                order_data = order_doc.to_dict()
+                orders.append({"order_id": order_id, "data": order_data})
+            else:
+                orders.append({"order_id": order_id, "error": "Order not found"})
+
+        return jsonify({"code": 200, "data": orders}), 200
+
+    except Exception as e:
+        logging.error("Error fetching orders: %s", str(e))
+
 
 
 

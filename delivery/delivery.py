@@ -100,15 +100,56 @@ def get_deliveries():
         return get_delivery_by_time(start_time, end_time)
 
     elif request.args.get("driver_id"):
-        driver_id = request.args.get("driver_id")
-        return get_delivery_by_driver(driver_id)
+        try:
+            driver_id = request.args.get("driver_id")
+            return get_delivery_by_driver(driver_id)
+    
+        except Exception as e:
+            logging.error("Exception occurred while getting deliveries by driver:\n%s", traceback.format_exc())
+            return (
+                jsonify(
+                    {
+                        "code": 500,
+                        "message": "An error occurred getting the deliveries.",
+                    }
+                ),
+                500,
+            )
+
     
     elif request.args.get("order_id"):
-        order_id = request.args.get("order_id")
-        return get_delivery_by_order(order_id)
+        try:
+            order_id = request.args.get("order_id")
+            return get_delivery_by_order(order_id)
+
+        except Exception as e:
+            logging.error("Exception occurred while getting deliveries by order:\n%s", traceback.format_exc())
+            return (
+                jsonify(
+                    {
+                        "code": 500,
+                        "message": "An error occurred getting the deliveries.",
+                    }
+                ),
+                500,
+            )
+
+        
     
     else:
-        delivery_list = db.session.scalars(db.select(Delivery)).all()
+        try:
+            delivery_list = db.session.scalars(db.select(Delivery)).all()
+        except Exception as e:
+            logging.error("Exception occurred while getting deliveries:\n%s", traceback.format_exc())
+            return (
+                jsonify(
+                    {
+                        "code": 500,
+                        "message": "An error occurred getting the deliveries.",
+                    }
+                ),
+                500,
+            )
 
         if len(delivery_list):
             return jsonify(
