@@ -63,6 +63,9 @@
     --chart-3: 210 32% 24%; /* slate */
     --chart-4: 145 47% 70%; /* medium green */
     --chart-5: 215 60% 70%; /* medium blue */
+    
+    /* Scrollbar width variable for layout calculations */
+    --scrollbar-width: 8px;
   }
  
   .dark {
@@ -244,6 +247,11 @@
   .nom-hero-subheading {
     @apply text-lg md:text-xl text-muted-foreground;
   }
+  
+  /* Fixed layout container to prevent shifting */
+  .fixed-layout {
+    @apply w-full overflow-x-hidden relative;
+  }
 }
 
 /* App-level fixes */
@@ -270,4 +278,63 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/30;
+}
+
+/* FIXES FOR NAVBAR AND LAYOUT SHIFTING */
+
+/* Force scrollbar to always be visible to prevent layout shifts */
+html {
+  overflow-y: scroll !important;
+  scrollbar-width: thin; /* For Firefox */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+/* Enhance navbar stickiness */
+.nom-navbar {
+  position: sticky !important; /* Ensure stickiness */
+  top: 0 !important;
+  z-index: 50 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Fix for the navbar container width */
+.nom-navbar .nom-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Remove any right padding on body that might be added by modal handling */
+body {
+  padding-right: 0 !important; 
+  overflow-x: hidden !important;
+  width: 100% !important;
+}
+
+/* Set a consistent width for page containers to prevent shifting */
+.nom-container {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Add modal handling to prevent layout shifts */
+body.modal-open {
+  overflow: hidden !important;
+  padding-right: var(--scrollbar-width) !important; /* Compensate for scrollbar */
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure filter sidebar has consistent width & height */
+.lg\:w-64 {
+  width: 16rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* For the product page layout */
+.flex-col.lg\:flex-row {
+  width: 100% !important;
+  position: relative !important;
 }

@@ -25,7 +25,7 @@
           >
             <div class="w-full md:w-36 h-36 bg-muted/20 rounded-md overflow-hidden shrink-0">
               <img 
-                :src="item.image" 
+                :src="item.imageURL" 
                 :alt="item.name" 
                 class="w-full h-full object-cover"
               />
@@ -104,7 +104,6 @@
               <span class="text-primary">${{ (totalPrice + deliveryFee).toFixed(2) }}</span>
             </div>
           
-
             <button 
               class="nom-btn-primary w-full py-3"
               @click="proceedToCheckout"
@@ -121,9 +120,11 @@
 
 <script>
 import { loadStripe } from '@stripe/stripe-js'
+import { inject } from 'vue'
 
 export default {
   name: 'CartPage',
+  emits: ['cart-updated'],
   data() {
     return {
       cart: [],
@@ -133,6 +134,7 @@ export default {
       selectedTimeSlot: null, // track user-selected delivery slot
       promoCode: '', // for promo code functionality
       deliveryFee: 5.99, // default delivery fee
+      cartUpdateHandler: null // Will store the injected cart update handler
     }
   },
   computed: {
@@ -165,6 +167,9 @@ export default {
     this.loadCart()
     this.loadCustomerId()
     this.initStripe()
+    
+    // Try to inject the cart update handler from App.vue
+    this.cartUpdateHandler = inject('cartUpdateHandler', null)
   },
   methods: {
     async initStripe() {
@@ -184,7 +189,48 @@ export default {
       }
     },
     async loadCart() {
-      this.cart = JSON.parse(sessionStorage.getItem('shoppingCart')) || []
+      const cartData = sessionStorage.getItem('shoppingCart')
+      if (cartData) {
+        try {
+          this.cart = JSON.parse(cartData)
+          
+          // Ensure all cart items have proper image URLs
+          // If an item is missing the imageURL property, fetch it from the inventory API
+          const missingImages = this.cart.some(item => !item.imageURL)
+          
+          if (missingImages) {
+            try {
+              const response = await fetch('http://localhost:5006/inventory')
+              const data = await response.json()
+              
+              if (data.code === 200) {
+                const inventoryItems = data.data
+                
+                // Update cart items with missing imageURLs
+                this.cart = this.cart.map(cartItem => {
+                  if (!cartItem.imageURL) {
+                    const inventoryItem = inventoryItems.find(item => item.id === cartItem.id)
+                    if (inventoryItem && inventoryItem.imageURL) {
+                      return { ...cartItem, imageURL: inventoryItem.imageURL }
+                    }
+                  }
+                  return cartItem
+                })
+                
+                // Save the updated cart back to sessionStorage
+                this.saveCart(false) // Don't notify about this internal update
+              }
+            } catch (error) {
+              console.error('Error fetching inventory data for images:', error)
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing cart data:', e)
+          this.cart = []
+        }
+      } else {
+        this.cart = []
+      }
 
       try {
         const response = await fetch('http://localhost:5006/inventory') // Inventory API
@@ -202,8 +248,26 @@ export default {
         console.error('Error fetching stock data:', error)
       }
     },
-    saveCart() {
+    saveCart(notify = true) {
       sessionStorage.setItem('shoppingCart', JSON.stringify(this.cart))
+      
+      // Notify the navbar about cart updates
+      if (notify) {
+        this.notifyCartUpdated()
+      }
+    },
+    // Method to notify about cart updates
+    notifyCartUpdated() {
+      // Method 1: Use the injected handler if available
+      if (this.cartUpdateHandler) {
+        this.cartUpdateHandler()
+      }
+      
+      // Method 2: Emit event to parent (App.vue)
+      this.$emit('cart-updated')
+      
+      // Method 3: Dispatch a global event that Navbar can listen for
+      window.dispatchEvent(new CustomEvent('cartUpdated'))
     },
     loadCustomerId() {
       this.customerId = sessionStorage.getItem('customerId') || '1' // or null if desired
@@ -214,7 +278,7 @@ export default {
     },
     removeItem(itemId) {
       this.cart = this.cart.filter((item) => item.id !== itemId)
-      this.saveCart()
+      this.saveCart() // This will also notify the navbar
     },
     increaseQuantity(item) {
       const availableStock = this.stockData[item.id] ?? item.numAvailable ?? 0
@@ -233,10 +297,11 @@ export default {
     decreaseQuantity(item) {
       if (item.quantity > 1) {
         item.quantity--
+        this.saveCart()
       } else {
         this.removeItem(item.id)
+        // removeItem already calls saveCart and notifies
       }
-      this.saveCart()
     },
     async proceedToCheckout() {
       try {
@@ -282,3 +347,21 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* Add to cart animation */
+.add-to-cart-ripple {
+  animation: ripple 0.7s ease-out;
+}
+
+@keyframes ripple {
+  from {
+    opacity: 1;
+    transform: scale(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+</style>
