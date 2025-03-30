@@ -1,108 +1,273 @@
-@import './base.css';
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #f8f8f8;
-  color: #333;
-  text-align: center;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --font-sans: 'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    /* Spacing System */
+    --space-1: 0.25rem; /* 4px */
+    --space-2: 0.5rem;  /* 8px */
+    --space-3: 0.75rem; /* 12px */
+    --space-4: 1rem;    /* 16px */
+    --space-6: 1.5rem;  /* 24px */
+    --space-8: 2rem;    /* 32px */
+    --space-12: 3rem;   /* 48px */
+
+    /* NomNomBox Fresh Color Scheme */
+    
+    /* Base colors */
+    --background: 204 15% 97%; /* light background, off-white with a hint of blue */
+    --foreground: 210 32% 24%; /* slate for text, matches our slate-800 */
+    
+    /* Card styles */
+    --card: 0 0% 100%; /* pure white for cards */
+    --card-foreground: 210 40% 15%; /* darker slate for card text for better contrast */
+    
+    /* Popover styles */
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 40% 15%; /* darker for better readability */
+    
+    /* Primary color - Fresh Green */
+    --primary: 145 67% 35%; /* darker emerald green for better contrast */
+    --primary-foreground: 0 0% 100%; /* white text on primary */
+    
+    /* Secondary color - Navy Blue - Professional and trustworthy */
+    --secondary: 215 70% 35%; /* navy blue */
+    --secondary-foreground: 0 0% 100%; /* white text on secondary */
+    
+    /* Muted elements */
+    --muted: 145 57% 95%; /* light green background for muted elements */
+    --muted-foreground: 210 25% 25%; /* darker slate for muted text */
+    
+    /* Accent elements - Light Blue */
+    --accent: 215 70% 95%; /* light blue for accents */
+    --accent-foreground: 215 80% 25%; /* dark blue for text on accent backgrounds */
+    
+    /* Destructive elements */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Border, input and ring colors */
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 145 67% 35%;
+    
+    /* Chart colors */
+    --chart-1: 145 67% 35%; /* primary green */
+    --chart-2: 215 70% 35%; /* secondary blue */
+    --chart-3: 210 32% 24%; /* slate */
+    --chart-4: 145 47% 70%; /* medium green */
+    --chart-5: 215 60% 70%; /* medium blue */
+  }
+ 
+  .dark {
+    --background: 210 32% 15%;
+    --foreground: 204 15% 95%;
+    
+    --card: 210 32% 18%;
+    --card-foreground: 204 15% 95%;
+    
+    --popover: 210 32% 18%;
+    --popover-foreground: 204 15% 95%;
+    
+    --primary: 145 67% 30%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 215 70% 30%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 210 32% 22%;
+    --muted-foreground: 204 15% 70%;
+    
+    --accent: 210 32% 22%;
+    --accent-foreground: 204 15% 95%;
+    
+    --destructive: 0 74% 45%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 210 32% 25%;
+    --input: 210 32% 25%;
+    --ring: 145 67% 30%;
+  }
 }
-
-.container {
-  width: 100%;
-  margin: 0 auto;
-  padding: 0;
-}
-
-/* Hero Section */
-.hero {
-  text-align: center;
-  padding: 120px 5%;
-  background: url('https://source.unsplash.com/1600x900/?food') no-repeat center center/cover;
-  color: white;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 550px;
-}
-
-.hero-content {
-  max-width: 800px;
-  font-size: 1.8rem;
-  text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
-}
-
-/* Section Layout */
-.section {
-  text-align: center;
-  padding: 70px 5%;
-  background: white;
-  margin: 20px auto;
-  border-radius: 12px;
-  box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.1);
-  width: 95%;
-  max-width: 1300px;
-  font-size: 1.4rem;
-}
-
-/* Grid Layout for Steps, Meals, and Plans */
-.steps, .meal-container, .plans {
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  gap: 40px;
-  font-size: 1.2rem;
-}
-
-/* Buttons */
-.btn {
-  background-color: #ff6600;
-  color: white;
-  padding: 18px 30px;
-  border-radius: 8px;
-  text-decoration: none;
-  display: inline-block;
-  margin-top: 20px;
-  font-size: 1.3rem;
-  transition: background 0.3s ease;
-}
-
-.btn:hover {
-  background-color: #e65c00;
-}
-
-/* Footer */
-.footer {
-  text-align: center;
-  padding: 35px;
-  background-color: #222;
-  color: white;
-  width: 100%;
-  font-size: 1.2rem;
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .hero {
-    height: 400px;
-    padding: 100px 10%;
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  .hero-content {
-    font-size: 1.6rem;
+  /* Enhanced Typography Hierarchy */
+  h1 {
+    @apply text-3xl font-bold leading-tight text-foreground;
   }
-  
-  .section {
-    width: 90%;
-    padding: 50px 5%;
-    font-size: 1.2rem;
+  h2 {
+    @apply text-2xl font-semibold leading-tight text-foreground;
+  }
+  h3 {
+    @apply text-xl font-medium leading-snug text-foreground;
+  }
+  h4 {
+    @apply text-lg font-medium leading-snug text-foreground;
+  }
+  h5, h6 {
+    @apply text-base font-medium tracking-tight text-foreground;
+  }
+  p {
+    @apply leading-relaxed;
+  }
+  .subtitle {
+    @apply text-base text-muted-foreground font-medium;
   }
 
-  .steps, .meal-container, .plans {
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
+  /* Fix for input text color issues */
+  input,
+  select,
+  textarea {
+    @apply text-foreground bg-background;
+    color-scheme: light;
   }
+
+  /* Special handling for multi-select elements */
+  select[multiple] {
+    @apply bg-background text-foreground border border-input;
+  }
+
+  /* Make sure placeholder text is visible */
+  ::placeholder {
+    @apply text-muted-foreground/60;
+  }
+}
+
+/* NomNomBox custom utility classes */
+@layer components {
+  /* Layout Containers */
+  .nom-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .nom-container-sm {
+    @apply max-w-3xl mx-auto px-4 sm:px-6;
+  }
+  
+  /* Modern Button Styles */
+  .nom-btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 transition-all duration-200 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow;
+  }
+  
+  .nom-btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-md px-4 py-2 transition-all duration-200 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow;
+  }
+  
+  .nom-btn-outline {
+    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md px-4 py-2 transition-all duration-200 font-medium;
+  }
+  
+  /* Enhanced Card Styles */
+  .nom-card {
+    @apply bg-card text-card-foreground rounded-lg border border-border shadow-sm p-6 transition-all duration-200;
+  }
+  
+  .nom-card-hover {
+    @apply hover:shadow-md hover:border-primary/20;
+  }
+  
+  /* Form Elements */
+  .nom-heading {
+    @apply text-2xl font-bold text-foreground;
+  }
+  
+  .nom-input {
+    @apply w-full p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground placeholder:text-muted-foreground/60;
+  }
+  
+  .nom-select {
+    @apply w-full p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground appearance-none;
+  }
+  
+  .nom-label {
+    @apply block text-sm font-medium mb-2;
+  }
+  
+  /* Badges and Tags */
+  .nom-badge {
+    @apply px-2 py-1 bg-accent text-accent-foreground text-xs rounded-full font-medium;
+  }
+  
+  .nom-badge-primary {
+    @apply px-2 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium;
+  }
+  
+  .nom-badge-secondary {
+    @apply px-2 py-1 bg-secondary/10 text-secondary text-xs rounded-full font-medium;
+  }
+  
+  /* Animations and Micro-interactions */
+  .nom-scale-hover {
+    @apply transition-transform duration-200 hover:scale-[1.02];
+  }
+  
+  .nom-fade-in {
+    @apply animate-in fade-in duration-300;
+  }
+  
+  .nom-slide-up {
+    @apply animate-in slide-in-from-bottom-8 duration-300;
+  }
+  
+  /* Modern Navbar */
+  .nom-navbar {
+    @apply sticky top-0 z-50 w-full border-b border-border/40 bg-primary/95 backdrop-blur supports-[backdrop-filter]:bg-primary/80;
+  }
+  
+  .nom-nav-link {
+    @apply text-primary-foreground/90 hover:text-primary-foreground transition-colors;
+  }
+  
+  /* Hero Section */
+  .nom-hero {
+    @apply py-12 md:py-20 bg-gradient-to-br from-background to-muted;
+  }
+  
+  .nom-hero-heading {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold leading-tight;
+  }
+  
+  .nom-hero-subheading {
+    @apply text-lg md:text-xl text-muted-foreground;
+  }
+}
+
+/* App-level fixes */
+#app {
+  margin: 0 !important;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  @apply w-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
 }

@@ -1,16 +1,51 @@
 <template>
-  <div class="auth-container">
-    <h2>Login</h2>
-    <form @submit.prevent="login">
-      <input v-model="email" type="email" placeholder="Email" required />
-      <input v-model="password" type="password" placeholder="Password" required />
-      <button type="submit">Login</button>
-    </form>
+  <div class="nom-container my-16">
+    <div class="max-w-md mx-auto nom-card nom-fade-in">
+      <div class="mb-8 text-center">
+        <h2 class="nom-heading mb-2">Welcome Back</h2>
+        <p class="text-muted-foreground">Sign in to your NomNomBox account</p>
+      </div>
+      
+      <form @submit.prevent="login" class="space-y-6">
+        <div class="space-y-2">
+          <label for="email" class="nom-label">Email</label>
+          <input 
+            v-model="email" 
+            type="email" 
+            id="email" 
+            placeholder="Enter your email" 
+            required
+            class="nom-input"
+          />
+        </div>
 
-    <p>
-      Don't have an account?
-      <router-link to="/signup">Sign Up</router-link>
-    </p>
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <label for="password" class="nom-label">Password</label>
+            <a href="#" class="text-sm text-primary hover:underline">Forgot password?</a>
+          </div>
+          <input 
+            v-model="password" 
+            type="password" 
+            id="password" 
+            placeholder="Enter your password" 
+            required
+            class="nom-input"
+          />
+        </div>
+
+        <button type="submit" class="w-full nom-btn-primary py-3">Login</button>
+      </form>
+
+      <div class="mt-8 pt-6 text-center border-t border-border">
+        <p class="text-muted-foreground">
+          Don't have an account?
+          <router-link to="/signup" class="text-primary font-medium hover:underline">
+            Create an account
+          </router-link>
+        </p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -46,7 +81,7 @@ export default {
 
           // Update authentication state with the token
           setAuth(customerId, token);
-            // Store token and customer ID in sessionStorage
+          // Store token and customer ID in sessionStorage
           sessionStorage.setItem("token", token);
           sessionStorage.setItem("customerId", customerId);
 
@@ -63,25 +98,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-.auth-container {
-  max-width: 400px;
-  margin: auto;
-  text-align: center;
-  padding-top: 100px; /* Push content below navbar */
-}
-input {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
-  padding: 8px;
-}
-button {
-  width: 100%;
-  padding: 10px;
-  background: blue;
-  color: white;
-  border: none;
-}
-</style>

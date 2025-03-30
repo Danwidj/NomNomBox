@@ -1,43 +1,93 @@
 <template>
-  <div class="container">
-    <section class="profile-section">
-      <h2>Edit Profile</h2>
-      <form @submit.prevent="updateProfile" class="edit-form">
-        <label for="name">Name:</label>
-        <input type="text" id="name" v-model="customer.name" required />
+  <div class="nom-container py-8">
+    <section class="max-w-3xl mx-auto">
+      <h2 class="nom-heading text-center mb-6">Edit Profile</h2>
+      
+      <form @submit.prevent="updateProfile" class="nom-card">
+        <div class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label for="name" class="block text-sm font-medium">Name:</label>
+              <input 
+                type="text" 
+                id="name" 
+                v-model="customer.name" 
+                required
+                class="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" v-model="customer.email" required disabled />
+            <div class="space-y-2">
+              <label for="email" class="block text-sm font-medium">Email:</label>
+              <input 
+                type="email" 
+                id="email" 
+                v-model="customer.email" 
+                required 
+                disabled
+                class="w-full p-2 border border-input rounded-md bg-muted/30 opacity-70"
+              />
+            </div>
 
-        <label for="address">Address:</label>
-        <input type="text" id="address" v-model="customer.address" required />
+            <div class="space-y-2">
+              <label for="address" class="block text-sm font-medium">Address:</label>
+              <input 
+                type="text" 
+                id="address" 
+                v-model="customer.address" 
+                required
+                class="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
 
-        <label for="phone">Phone:</label>
-        <input type="text" id="phone" v-model="customer.phone" required />
+            <div class="space-y-2">
+              <label for="phone" class="block text-sm font-medium">Phone:</label>
+              <input 
+                type="text" 
+                id="phone" 
+                v-model="customer.phone" 
+                required
+                class="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
 
-        <label>Dietary Preferences:</label>
-        <div class="dietary-preferences">
-          <div
-            v-for="(tag, index) in availableDietaryTags"
-            :key="index"
-            :class="['tag', { selected: isTagSelected(tag) }]"
-            @click="toggleDietaryTag(tag)"
-          >
-            {{ tag }}
+          <div class="space-y-3">
+            <label class="block text-sm font-medium">Dietary Preferences:</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                v-for="tag in availableDietaryTags"
+                :key="tag"
+                :class="[
+                  'px-3 py-1.5 rounded-full text-base transition-colors',
+                  isTagSelected(tag)
+                    ? 'bg-secondary text-secondary-foreground' 
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                ]"
+                @click="toggleDietaryTag(tag)"
+              >
+                {{ tag }}
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-4 flex gap-4">
+            <button type="submit" class="nom-btn-primary flex-1">Save Changes</button>
+            <button type="button" class="flex-1 bg-muted text-foreground hover:bg-muted/80 rounded-md px-4 py-2 transition-colors" @click="cancelEdit">
+              Cancel
+            </button>
           </div>
         </div>
-
-        <button type="submit" class="btn">Save Changes</button>
-        <button type="button" class="btn btn-secondary" @click="cancelEdit">Cancel</button>
       </form>
     </section>
   </div>
 </template>
 
 <script>
-import customerApi from '@/api/customerApi'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import customerApi from '@/api/customerApi'
 
 export default {
   name: 'EditProfile',
@@ -63,7 +113,7 @@ export default {
       'Paleo',
       'Pescatarian',
       'Organic',
-      'Plant-Based', // Including this since it appears in your current data
+      'Plant-Based',
     ])
 
     onMounted(async () => {
@@ -121,7 +171,7 @@ export default {
 
     const fetchDietaryTags = async () => {
       try {
-        // Attempt to fetch tags from API - same as in SignUpView
+        // Attempt to fetch tags from API
         const response = await fetch('http://localhost:5004/inventory')
         const data = await response.json()
 
@@ -178,7 +228,6 @@ export default {
         }
 
         console.log('Sending update:', updateData)
-        const token = localStorage.getItem('token')
         const response = await customerApi.updateCustomerDetails(userId, updateData, token)
         console.log('Update response:', response)
 
@@ -219,88 +268,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.profile-section {
-  text-align: center;
-  padding: 40px 5%;
-  background: white;
-  margin: 20px auto;
-  border-radius: 12px;
-  box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.1);
-  width: 95%;
-  max-width: 600px;
-}
-
-.edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  width: 100%;
-  max-width: 500px;
-  margin: auto;
-}
-
-.edit-form input {
-  padding: 12px;
-  border-radius: 5px;
-  border: 1px solid #ddd;
-  font-size: 1rem;
-}
-
-.edit-form label {
-  text-align: left;
-  font-weight: bold;
-  margin-bottom: -10px;
-}
-
-.dietary-preferences {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-start;
-  margin: 10px 0;
-}
-
-.tag {
-  background-color: #f0f0f0;
-  padding: 8px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-}
-
-.tag:hover {
-  background-color: #e0e0e0;
-}
-
-.tag.selected {
-  background-color: #ff6600;
-  color: white;
-}
-
-.btn {
-  background-color: #ff6600;
-  color: white;
-  padding: 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background 0.3s;
-}
-
-.btn:hover {
-  background-color: #e65c00;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  margin-top: 10px;
-}
-
-.btn-secondary:hover {
-  background-color: #5a6268;
-}
-</style>

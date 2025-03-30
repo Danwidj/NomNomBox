@@ -1,51 +1,112 @@
 <template>
-  <div class="success-container">
-    <h2>Payment Successful!</h2>
-    <p>Thank you for your order. Your payment was successful.</p>
-
-    <div v-if="!deliveryScheduled" class="delivery-scheduler">
-      <h3>Schedule Your Delivery</h3>
-
-      <div class="date-picker">
-        <label for="delivery-date">Select Delivery Date:</label>
-        <input
-          type="date"
-          id="delivery-date"
-          v-model="selectedDate"
-          :min="minDate"
-          @change="generateTimeSlots"
-        />
+  <div class="nom-container py-12 nom-fade-in">
+    <div class="max-w-3xl mx-auto nom-card">
+      <!-- Success Header -->
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <h2 class="nom-heading mb-2">Payment Successful!</h2>
+        <p class="text-muted-foreground text-lg">Thank you for your order. Your payment has been processed successfully.</p>
       </div>
 
-      <div v-if="timeSlots.length > 0" class="time-slots">
-        <h4>Available Time Slots:</h4>
-        <div class="slot-grid">
-          <button
-            v-for="(slot, index) in timeSlots"
-            :key="index"
-            @click="selectTimeSlot(slot)"
-            :class="{ selected: selectedSlot === slot }"
+      <!-- Delivery Scheduling Section -->
+      <div v-if="!deliveryScheduled" class="mt-8 bg-muted/30 p-6 rounded-lg border border-border">
+        <h3 class="text-xl font-semibold mb-4">Schedule Your Delivery</h3>
+        <p class="text-muted-foreground mb-6">Choose a convenient date and time for your delivery.</p>
+
+        <!-- Date Picker -->
+        <div class="mb-6">
+          <label for="delivery-date" class="nom-label">Select Delivery Date:</label>
+          <input
+            type="date"
+            id="delivery-date"
+            v-model="selectedDate"
+            :min="minDate"
+            @change="generateTimeSlots"
+            class="nom-input"
+          />
+        </div>
+
+        <!-- Time Slots -->
+        <div v-if="selectedDate && timeSlots.length > 0" class="mb-6 nom-fade-in">
+          <label class="nom-label mb-3">Available Time Slots:</label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <button
+              v-for="(slot, index) in timeSlots"
+              :key="index"
+              @click="selectTimeSlot(slot)"
+              class="p-3 rounded-md border transition-all duration-200 text-sm"
+              :class="selectedSlot === slot 
+                ? 'bg-primary text-primary-foreground border-primary' 
+                : 'bg-card hover:bg-muted/50 border-border'"
+            >
+              {{ slot.display }}
+            </button>
+          </div>
+        </div>
+
+        <!-- No Slots Selected Message -->
+        <div v-else-if="selectedDate && timeSlots.length === 0" class="mb-6 p-4 bg-destructive/10 text-destructive rounded-md">
+          No delivery slots available for the selected date. Please choose another date.
+        </div>
+
+        <!-- Confirm Button -->
+        <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+          <router-link to="/profile" class="nom-btn-outline">
+            Skip for Now
+          </router-link>
+          <button 
+            @click="scheduleDelivery" 
+            :disabled="!selectedSlot"
+            class="nom-btn-primary"
+            :class="{'opacity-50 cursor-not-allowed': !selectedSlot}"
           >
-            {{ slot.display }}
+            Confirm Delivery Slot
           </button>
+        </div>
+
+        <!-- Error Message -->
+        <div v-if="errorMessage" class="mt-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+          {{ errorMessage }}
         </div>
       </div>
 
-      <button class="confirm-btn" @click="scheduleDelivery" :disabled="!selectedSlot">
-        Confirm Delivery Slot
-      </button>
+      <!-- Confirmation Message -->
+      <div v-else class="mt-8 bg-primary/10 p-6 rounded-lg border border-primary/20 nom-fade-in">
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold">Delivery Scheduled Successfully!</h3>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-6 mb-4">
+          <div class="p-4 bg-background rounded-md flex-1">
+            <p class="text-muted-foreground text-sm mb-1">Delivery Date</p>
+            <p class="font-medium">{{ formattedDeliveryDate }}</p>
+          </div>
+          <div class="p-4 bg-background rounded-md flex-1">
+            <p class="text-muted-foreground text-sm mb-1">Delivery Time</p>
+            <p class="font-medium">{{ formattedDeliveryTime }}</p>
+          </div>
+        </div>
+        
+        <p class="text-muted-foreground">
+          Your order will be delivered on the scheduled date and time. You can track your order status in your profile.
+        </p>
 
-      <div v-if="errorMessage" class="error-message">
-        {{ errorMessage }}
+        <div class="flex justify-center mt-6">
+          <router-link to="/profile" class="nom-btn-primary">
+            Go to My Orders
+          </router-link>
+        </div>
       </div>
-    </div>
-
-    <div v-else class="confirmation-message">
-      <h3>Delivery Scheduled Successfully!</h3>
-      <p>
-        Your order will be delivered on {{ formattedDeliveryDate }} between
-        {{ formattedDeliveryTime }}.
-      </p>
     </div>
   </div>
 </template>
@@ -229,90 +290,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.success-container {
-  text-align: center;
-  margin-top: 50px;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.delivery-scheduler {
-  margin-top: 30px;
-  padding: 20px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-}
-
-.date-picker {
-  margin: 20px 0;
-}
-
-.date-picker input {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-left: 10px;
-}
-
-.time-slots {
-  margin: 20px 0;
-}
-
-.slot-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.slot-grid button {
-  padding: 10px;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.slot-grid button:hover {
-  background-color: #f0f0f0;
-}
-
-.slot-grid button.selected {
-  background-color: #42b983;
-  color: white;
-  border-color: #42b983;
-}
-
-.confirm-btn {
-  margin-top: 20px;
-  padding: 10px 20px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.confirm-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-.error-message {
-  color: #ff4444;
-  margin-top: 15px;
-}
-
-.confirmation-message {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: #e8f5e9;
-  border-radius: 8px;
-}
-</style>

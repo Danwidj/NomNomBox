@@ -1,80 +1,121 @@
 <template>
-  <div class="page-container">
-    <section class="cart-section">
-      <h2>Shopping Cart</h2>
+  <div class="nom-container py-8">
+    <section class="max-w-6xl mx-auto nom-fade-in">
+      <h2 class="nom-heading text-center mb-8">Shopping Cart</h2>
 
       <!-- Empty Cart Message -->
-      <div v-if="cart.length === 0" class="empty-cart">
-        <p>Your shopping cart is empty.</p>
+      <div v-if="cart.length === 0" class="nom-card py-12 text-center">
+        <div class="flex flex-col items-center justify-center space-y-4">
+          <svg class="w-16 h-16 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 6V5C16 3.34315 14.6569 2 13 2H11C9.34315 2 8 3.34315 8 5V6H4C3.44772 6 3 6.44772 3 7V19C3 20.6569 4.34315 22 6 22H18C19.6569 22 21 20.6569 21 19V7C21 6.44772 20.5523 6 20 6H16ZM10 5C10 4.44772 10.4477 4 11 4H13C13.5523 4 14 4.44772 14 5V6H10V5ZM18 20H6C5.44772 20 5 19.5523 5 19V8H19V19C19 19.5523 18.5523 20 18 20Z" fill="currentColor"/>
+          </svg>
+          <p class="text-xl text-muted-foreground">Your shopping cart is empty.</p>
+          <router-link to="/Product" class="nom-btn-primary mt-4">Browse Products</router-link>
+        </div>
       </div>
 
       <!-- Cart Content -->
-      <div v-else class="cart-content">
+      <div v-else class="flex flex-col lg:flex-row gap-8">
         <!-- Cart Items List -->
-        <div class="cart-items">
-          <div v-for="item in cart" :key="item.id" class="cart-item">
-            <img :src="item.image" :alt="item.name" class="cart-item-image" />
+        <div class="flex-1 space-y-6">
+          <div 
+            v-for="item in cart" 
+            :key="item.id" 
+            class="nom-card nom-card-hover flex flex-col md:flex-row gap-6"
+          >
+            <div class="w-full md:w-36 h-36 bg-muted/20 rounded-md overflow-hidden shrink-0">
+              <img 
+                :src="item.image" 
+                :alt="item.name" 
+                class="w-full h-full object-cover"
+              />
+            </div>
 
-            <div class="cart-item-details">
-              <h3 class="cart-item-title">{{ item.name }}</h3>
-              <p class="cart-item-description">{{ item.description }}</p>
-              <p class="cart-item-price">$ {{ item.price.toFixed(2) }}</p>
-
-              <div class="quantity-controls">
-                <button class="btn quantity-btn" @click="decreaseQuantity(item)">−</button>
-                <span class="quantity">{{ item.quantity }}</span>
-                <button
-                  class="btn quantity-btn"
-                  @click="increaseQuantity(item)"
-                  :disabled="item.quantity >= (stockData[item.id] || item.stock)"
+            <div class="flex-1">
+              <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                <div>
+                  <h3 class="text-xl font-semibold">{{ item.name }}</h3>
+                  <p class="text-muted-foreground mt-1 line-clamp-2">{{ item.description }}</p>
+                  <p class="text-primary font-bold mt-2">${{ item.price.toFixed(2) }}</p>
+                </div>
+                
+                <button 
+                  class="text-destructive hover:text-destructive/80 font-medium self-start md:self-center flex items-center gap-1"
+                  @click="removeItem(item.id)"
                 >
-                  +
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                  </svg>
+                  Remove
                 </button>
               </div>
 
-              <p class="stock-info">Available: {{ stockData[item.id] || item.stock }} in stock</p>
-              <br />
-              <p class="cart-item-total">
-                Subtotal: <strong>$ {{ (item.price * item.quantity).toFixed(2) }}</strong>
-              </p>
+              <div class="mt-4 flex justify-between items-end">
+                <div>
+                  <div class="flex items-center">
+                    <button 
+                      class="w-8 h-8 bg-muted text-foreground rounded-md flex items-center justify-center hover:bg-muted/80 transition-colors border border-border"
+                      @click="decreaseQuantity(item)"
+                    >
+                      −
+                    </button>
+                    <span class="w-12 text-center font-medium">{{ item.quantity }}</span>
+                    <button 
+                      class="w-8 h-8 bg-primary text-primary-foreground rounded-md flex items-center justify-center hover:bg-primary/80 transition-colors"
+                      @click="increaseQuantity(item)"
+                      :disabled="item.quantity >= (stockData[item.id] || item.stock)"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p class="text-sm mt-2" :class="{'text-destructive font-medium': (stockData[item.id] || item.stock) < 5}">
+                    Available: {{ stockData[item.id] || item.stock }} in stock
+                  </p>
+                </div>
+                
+                <p class="font-bold">
+                  Subtotal: ${{ (item.price * item.quantity).toFixed(2) }}
+                </p>
+              </div>
             </div>
-
-            <button class="btn remove-btn" @click="removeItem(item.id)">Remove</button>
           </div>
         </div>
 
         <!-- Order Summary -->
-        <div class="cart-summary">
-          <h3>Order Summary</h3>
-          <div class="summary-item">
-            <span>Total Items:</span>
-            <span>{{ totalItems }}</span>
-          </div>
-          <div class="summary-item">
-            <span>Total Price:</span>
-            <span class="total-price">$ {{ totalPrice.toFixed(2) }}</span>
-          </div>
+        <div class="w-full lg:w-80 shrink-0">
+          <div class="space-y-4 mb-6">
+            <div class="flex justify-between">
+              <span class="text-muted-foreground">Total Items:</span>
+              <span>{{ totalItems }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-muted-foreground">Subtotal:</span>
+              <span>${{ totalPrice.toFixed(2) }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-muted-foreground">Delivery Fee:</span>
+              <span>${{ deliveryFee.toFixed(2) }}</span>
+            </div>
+            <div class="h-px bg-border my-2"></div>
+            <div class="flex justify-between font-bold">
+              <span>Total:</span>
+              <span class="text-primary">${{ (totalPrice + deliveryFee).toFixed(2) }}</span>
+            </div>
+          
 
-          <!-- Delivery Time Slot: only show if cart has items -->
-          <div class="delivery-time-slot" v-if="cart.length > 0">
-            <label for="deliveryTimeSlot">Select Delivery Time Slot:</label>
-            <select id="deliveryTimeSlot" v-model="selectedTimeSlot">
-              <option v-for="slot in timeSlots" :key="slot" :value="slot">
-                {{ slot }}
-              </option>
-            </select>
+            <button 
+              class="nom-btn-primary w-full py-3"
+              @click="proceedToCheckout"
+              :disabled="cart.length === 0"
+            >
+              Proceed to Checkout
+            </button>
           </div>
-
-          <button class="checkout-btn" @click="proceedToCheckout">Proceed to Checkout</button>
         </div>
       </div>
     </section>
-  </div>
-
-  <div class="customer-id">
-    <p>
-      Customer ID: <strong>{{ customerId }}</strong>
-    </p>
   </div>
 </template>
 
@@ -90,6 +131,8 @@ export default {
       stripe: null,
       customerId: '1', // or null if you prefer
       selectedTimeSlot: null, // track user-selected delivery slot
+      promoCode: '', // for promo code functionality
+      deliveryFee: 5.99, // default delivery fee
     }
   },
   computed: {
@@ -206,7 +249,7 @@ export default {
             price: item.price,
             quantity: item.quantity,
           })),
-          totalPrice: this.totalPrice,
+          totalPrice: this.totalPrice + this.deliveryFee,
           timeSlot: this.selectedTimeSlot, // pass the selected time slot
         }
         console.log('Checkout Request:', checkoutData)
@@ -239,214 +282,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-/* General Styling */
-.page-container {
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-  min-height: 100vh;
-  background: #f7f7f7;
-}
-
-/* Shopping Cart Section */
-.cart-section {
-  width: 90%;
-  max-width: 1000px;
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-/* Empty Cart */
-.empty-cart {
-  font-size: 1.2rem;
-  color: #777;
-  padding: 20px;
-}
-
-/* Cart Content */
-.cart-content {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-/* Cart Items */
-.cart-items {
-  flex: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-/* Cart Item */
-.cart-item {
-  display: flex;
-  align-items: center;
-  background: white;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.08);
-  transition: 0.3s;
-}
-
-.cart-item:hover {
-  transform: scale(1.02);
-  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.12);
-}
-
-/* Product Image */
-.cart-item-image {
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
-  object-fit: cover;
-  margin-right: 15px;
-}
-
-/* Product Details */
-.cart-item-details {
-  flex: 1;
-  text-align: left;
-}
-
-.cart-item-title {
-  font-size: 1.1rem;
-  font-weight: bold;
-}
-
-.cart-item-description {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.cart-item-price {
-  font-size: 1rem;
-  font-weight: bold;
-  color: #ff6600;
-}
-
-.cart-item-total {
-  font-size: 1rem;
-  font-weight: bold;
-  margin-top: 8px;
-}
-
-/* Quantity Controls */
-.quantity-controls {
-  display: flex;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.quantity {
-  font-size: 1rem;
-  font-weight: bold;
-  margin: 0 10px;
-}
-
-.quantity-btn {
-  background: #ff9900;
-  border: none;
-  color: white;
-  padding: 6px 12px;
-  font-size: 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  margin: 0 5px;
-  transition: 0.3s;
-}
-
-.quantity-btn:hover {
-  background: #e68a00;
-}
-
-/* Remove Button (Always Red) */
-.remove-btn {
-  background: #ff4d4d;
-  padding: 8px 14px;
-  transition: 0.3s;
-  border: none;
-}
-
-.remove-btn:hover {
-  background: #e60000;
-  transform: scale(1.1);
-}
-
-/* Order Summary */
-.cart-summary {
-  flex: 1;
-  background: #fafafa;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.08);
-  text-align: left;
-}
-
-.cart-summary h3 {
-  font-size: 1.3rem;
-  margin-bottom: 15px;
-}
-
-.summary-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 1rem;
-  margin-bottom: 10px;
-}
-
-.total-price {
-  font-weight: bold;
-  color: #ff6600;
-}
-
-/* Checkout Button */
-.checkout-btn {
-  background: #009900;
-  padding: 14px;
-  font-size: 1rem;
-  color: white;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: 0.3s;
-  border: none;
-}
-
-.checkout-btn:hover {
-  background: #007700;
-  transform: scale(1.05);
-}
-
-/* Stock Info */
-.stock-info {
-  font-size: 0.9rem;
-  color: #ff0000;
-  font-weight: bold;
-}
-
-/* Delivery Time Slot */
-.delivery-time-slot {
-  margin-top: 15px;
-  text-align: left;
-}
-
-.delivery-time-slot label {
-  display: inline-block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.delivery-time-slot select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-</style>

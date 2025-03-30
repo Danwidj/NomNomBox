@@ -49,10 +49,19 @@ export default {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
-  			}
+  			},
+            // NomNomBox custom colors
+            nomnom: {
+              'green': '#27ae60',
+              'green-light': '#a7f3d0',
+              'green-dark': '#1d8a4e',
+              'orange': '#f39c12',
+              'orange-light': '#fef3c7',
+              'slate': '#2c3e50',
+              'slate-light': '#f8fafc',
+            }
   		}
   	}
   },
   plugins: [require("tailwindcss-animate")],
 }
-
