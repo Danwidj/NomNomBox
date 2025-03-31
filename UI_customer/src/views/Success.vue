@@ -29,6 +29,13 @@
             @change="generateTimeSlots"
             class="nom-input"
           />
+          <div v-if="isLoadingSlots" class="mt-2 text-muted-foreground text-sm flex items-center">
+            <svg class="animate-spin mr-2 h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Loading available slots...
+          </div>
         </div>
 
         <!-- Time Slots -->
@@ -38,19 +45,26 @@
             <button
               v-for="(slot, index) in timeSlots"
               :key="index"
-              @click="selectTimeSlot(slot)"
+              @click="slot.available ? selectTimeSlot(slot) : null"
               class="p-3 rounded-md border transition-all duration-200 text-sm"
-              :class="selectedSlot === slot 
-                ? 'bg-primary text-primary-foreground border-primary' 
-                : 'bg-card hover:bg-muted/50 border-border'"
+              :class="getSlotClasses(slot)"
+              :disabled="!slot.available"
             >
               {{ slot.display }}
             </button>
           </div>
+          <p class="mt-2 text-muted-foreground text-sm flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Greyed out slots have no available drivers
+          </p>
         </div>
 
         <!-- No Slots Selected Message -->
-        <div v-else-if="selectedDate && timeSlots.length === 0" class="mb-6 p-4 bg-destructive/10 text-destructive rounded-md">
+        <div v-else-if="selectedDate && timeSlots.length === 0 && !isLoadingSlots" class="mb-6 p-4 bg-destructive/10 text-destructive rounded-md">
           No delivery slots available for the selected date. Please choose another date.
         </div>
 
@@ -126,6 +140,8 @@ export default {
       deliveryTime: null,
       formattedDeliveryDate: '',
       formattedDeliveryTime: '',
+      availableSlots: [],
+      isLoadingSlots: false,
     }
   },
   async mounted() {
@@ -169,11 +185,13 @@ export default {
     }
   },
   methods: {
-    generateTimeSlots() {
+    async generateTimeSlots() {
       if (!this.selectedDate) return
 
       this.timeSlots = []
       this.selectedSlot = null
+      this.isLoadingSlots = true
+      this.availableSlots = await this.fetchAvailableSlots()
 
       // Generate time slots from 08:00 to 22:00 in 30-minute increments
       const startHour = 8
@@ -200,50 +218,106 @@ export default {
           // Create Date object for the selected date and time
           const slotDate = new Date(this.selectedDate)
           slotDate.setHours(time.hour, time.minute, 0, 0)
+          
+          const unixTime = Math.floor(slotDate.getTime() / 1000)
+          
+          // Check if this slot is available by comparing with available slots from server
+          const isAvailable = this.availableSlots.includes(unixTime)
 
           this.timeSlots.push({
             display,
             startTime: startTime,
             endTime: endTime,
-            unixStart: Math.floor(slotDate.getTime() / 1000), // Ensure it's a whole number
+            unixStart: unixTime,
             unixEnd: Math.floor((slotDate.getTime() + 30 * 60 * 1000) / 1000), // Add 30 minutes and convert to seconds
+            available: isAvailable
           })
         })
       }
+      
+      this.isLoadingSlots = false
     },
+    
+    async fetchAvailableSlots() {
+      // Get start and end timestamps for the selected day
+      const selectedDate = new Date(this.selectedDate)
+      const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0))
+      const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999))
+      
+      const startTimestamp = Math.floor(startOfDay.getTime() / 1000)
+      const endTimestamp = Math.floor(endOfDay.getTime() / 1000)
+      
+      try {
+        const response = await fetch(
+          `http://localhost:5007/available_slots?start=${startTimestamp}&end=${endTimestamp}`
+        )
+        
+        if (!response.ok) {
+          console.error('Failed to fetch available slots:', response.statusText)
+          return []
+        }
+        
+        const data = await response.json()
+        
+        if (data.code === 200 && Array.isArray(data.data)) {
+          return data.data
+        }
+        
+        return []
+      } catch (error) {
+        console.error('Error fetching available slots:', error)
+        return []
+      }
+    },
+    
+    getSlotClasses(slot) {
+      if (this.selectedSlot === slot) {
+        return 'bg-primary text-primary-foreground border-primary'
+      }
+      
+      if (!slot.available) {
+        return 'bg-muted/30 text-muted-foreground/50 border-border cursor-not-allowed'
+      }
+      
+      return 'bg-card hover:bg-muted/50 border-border'
+    },
+    
     selectTimeSlot(slot) {
+      if (!slot.available) return
+      
       this.selectedSlot = slot
       this.errorMessage = ''
     },
+    
     async scheduleDelivery() {
       if (!this.selectedSlot) {
         this.errorMessage = 'Please select a delivery slot'
         return
       }
-
+    
       if (!this.orderId) {
         this.errorMessage = 'Order ID is not available'
         return
       }
-
+    
       if (!this.userId) {
         this.errorMessage = 'User ID is not available'
         return
       }
-
+    
       // Get token from storage
       const token = localStorage.getItem('token') || sessionStorage.getItem('token')
       if (!token) {
         this.errorMessage = 'Authentication token is not available'
         return
       }
-
+    
       const deliveryData = {
         user_id: this.userId,
         order_id: this.orderId,
         delivery_time: this.selectedSlot.unixStart,
       }
-
+    
       try {
         console.log('Sending delivery request:', deliveryData)
         const response = await fetch('http://localhost:5000/place_delivery_request', {
@@ -254,20 +328,20 @@ export default {
           },
           body: JSON.stringify(deliveryData),
         })
-
+      
         const result = await response.json()
-
+      
         if (response.status !== 200) {
           this.errorMessage =
             result.message || 'Failed to schedule delivery. Please try another slot.'
           console.error('Delivery scheduling failed:', result)
           return
         }
-
+      
         // Delivery scheduled successfully
         this.deliveryScheduled = true
         this.deliveryTime = this.selectedSlot.unixStart
-
+      
         // Format for display
         const deliveryDate = new Date(this.selectedSlot.unixStart * 1000) // Convert from Unix timestamp
         this.formattedDeliveryDate = deliveryDate.toLocaleDateString('en-US', {
@@ -277,7 +351,7 @@ export default {
           day: 'numeric',
         })
         this.formattedDeliveryTime = `${this.selectedSlot.startTime} - ${this.selectedSlot.endTime}`
-
+      
         // Clear cart and delivery slot from storage
         sessionStorage.removeItem('shoppingCart')
         localStorage.removeItem('currentOrderId')
@@ -286,7 +360,7 @@ export default {
         console.error('Error scheduling delivery:', error)
         this.errorMessage = 'An error occurred. Please try again.'
       }
-    },
+    }
   },
 }
 </script>

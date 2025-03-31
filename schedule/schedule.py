@@ -226,19 +226,50 @@ def create_timeslot_assignment():
     return jsonify({"code": 201, "data": assigned_driver.json()}), 201
 
 
+@app.route("/available_slots", methods=["GET"])
+def get_available_slots():
+    """
+    Returns the available timeslots within a given time range.
+    Query parameters:
+    - start: start timestamp (in seconds since epoch)
+    - end: end timestamp (in seconds since epoch)
+    """
+    start_timestamp = request.args.get('start')
+    end_timestamp = request.args.get('end')
+    
+    if not start_timestamp or not end_timestamp:
+        return jsonify({"code": 400, "message": "Missing start or end timestamp"}), 400
+    
+    try:
+        # Convert to datetime objects
+        start_time = datetime.fromtimestamp(int(start_timestamp), timezone.utc)
+        end_time = datetime.fromtimestamp(int(end_timestamp), timezone.utc)
+        
+        # Query for all unassigned timeslots in the range
+        available_timeslots = db.session.query(Schedule.timeslot)\
+            .filter(Schedule.timeslot >= start_time)\
+            .filter(Schedule.timeslot <= end_time)\
+            .filter(Schedule.assigned == False)\
+            .distinct()\
+            .all()
+        
+        # Extract the timestamp values and convert to Unix time
+        available_slots = [int(ts[0].timestamp()) for ts in available_timeslots]
+        
+        return jsonify({"code": 200, "data": available_slots}), 200
+    
+    except Exception as e:
+        print(f"Error retrieving available slots: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"code": 500, "message": f"Error retrieving available slots: {str(e)}"}), 500
+
+
 @app.route("/message", methods=["GET"])
 def get_messages():
     """ Returns the last consumed messages from Kafka. """
     global messages
     print(messages)
     return jsonify({"messages": messages}), 200
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

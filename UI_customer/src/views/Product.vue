@@ -79,108 +79,116 @@
               </div>
             </div>
 
-          <!-- Price Range with Enhanced Slider -->
-          <div class="mb-6">
-            <div @click="togglePriceRange" class="flex justify-between items-center cursor-pointer hover:text-primary transition-colors duration-200 p-2 -mx-2 rounded-md hover:bg-accent/50">
-              <label class="nom-label mb-0 font-medium">Price Range</label>
-              <div class="flex items-center">
-                <span class="text-sm font-medium mr-2">
-                  ${{ priceRange[0] }} - ${{ priceRange[1] }}
-                </span>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="18" 
-                  height="18" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  stroke-width="2" 
-                  stroke-linecap="round" 
-                  stroke-linejoin="round"
-                  :class="{'transform rotate-180 transition-transform duration-300': priceRangeOpen, 'transition-transform duration-300': !priceRangeOpen}"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </div>
-            </div>
-
-            <div 
-              v-if="priceRangeOpen"
-              class="mt-2 bg-muted/40 p-3 rounded-md border border-border/50 animate-in fade-in zoom-in-95 duration-200 origin-top"
-            >
-              <!-- Price range labels -->
-              <div class="flex justify-between mt-2 mb-6">
-                <span class="text-sm font-medium">Min: ${{ priceRange[0] }}</span>
-                <span class="text-sm font-medium">Max: ${{ priceRange[1] }}</span>
+          <!-- Price Range with Fixed Dollar Sign Positioning and Improved Validation -->
+            <div class="mb-6">
+              <div @click="togglePriceRange" class="flex justify-between items-center cursor-pointer hover:text-primary transition-colors duration-200 p-2 -mx-2 rounded-md hover:bg-accent/50">
+                <label class="nom-label mb-0 font-medium">Price Range</label>
+                <div class="flex items-center">
+                  <span class="text-sm font-medium mr-2">
+                    ${{ priceRange[0] }} - ${{ priceRange[1] }}
+                  </span>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="18" 
+                    height="18" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    stroke-width="2" 
+                    stroke-linecap="round" 
+                    stroke-linejoin="round"
+                    :class="{'transform rotate-180 transition-transform duration-300': priceRangeOpen, 'transition-transform duration-300': !priceRangeOpen}"
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
               </div>
             
-              <div class="px-4 py-2">
-                <!-- Slider Track with Animated Handles -->
-                <div class="relative h-2 bg-border/70 rounded-full" ref="sliderTrack">
-                  <!-- Filled Track -->
-                  <div 
-                    class="absolute h-2 bg-primary/80 rounded-full transition-all duration-300 ease-out"
-                    :style="{
-                      left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`,
-                      width: `${((priceRange[1] - priceRange[0]) / (maxPrice - minPrice)) * 100}%`
-                    }"
-                  ></div>
-                  
-                  <!-- Min Handle -->
-                  <div
-                    class="absolute w-6 h-6 bg-primary rounded-full -mt-2 cursor-pointer shadow-md ring-4 ring-primary/20 hover:ring-primary/30 transition-all duration-200"
-                    :style="{
-                      left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`,
-                      marginLeft: '-12px'
-                    }"
-                    @mousedown="startDrag($event, 'min')"
-                    @touchstart="startDrag($event, 'min')"
-                  ></div>
-                  
-                  <!-- Max Handle -->
-                  <div
-                    class="absolute w-6 h-6 bg-primary rounded-full -mt-2 cursor-pointer shadow-md ring-4 ring-primary/20 hover:ring-primary/30 transition-all duration-200"
-                    :style="{
-                      left: `${((priceRange[1] - minPrice) / (maxPrice - minPrice)) * 100}%`,
-                      marginLeft: '-12px'
-                    }"
-                    @mousedown="startDrag($event, 'max')"
-                    @touchstart="startDrag($event, 'max')"
-                  ></div>
+              <div 
+                v-if="priceRangeOpen"
+                class="mt-2 bg-muted/40 p-3 rounded-md border border-border/50 animate-in fade-in zoom-in-95 duration-200 origin-top"
+              >
+                <!-- Price range labels -->
+                <div class="flex justify-between mt-2 mb-6">
+                  <span class="text-sm font-medium">Min: ${{ priceRange[0] }}</span>
+                  <span class="text-sm font-medium">Max: ${{ priceRange[1] }}</span>
                 </div>
               
-                <!-- Price inputs with better spacing -->
-                <div class="flex justify-between mt-8 gap-4">
-                  <div class="relative w-1/2">
-                    <span class="text-sm font-medium text-muted-foreground">Min Price</span>
-                    <div class="flex items-center mt-2">
-                      <span class="text-sm mr-1">$</span>
-                      <input
-                        type="number"
-                        :min="minPrice"
-                        :max="priceRange[1] - 1"
-                        v-model.number="priceRange[0]"
-                        class="w-full p-2 border border-input rounded-md text-center"
-                      />
-                    </div>
+                <div class="px-4 py-2">
+                  <!-- Slider Track with Animated Handles -->
+                  <div class="relative h-2 bg-border/70 rounded-full" ref="sliderTrack">
+                    <!-- Filled Track -->
+                    <div 
+                      class="absolute h-2 bg-primary/80 rounded-full transition-all duration-300 ease-out"
+                      :style="{
+                        left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`,
+                        width: `${((priceRange[1] - priceRange[0]) / (maxPrice - minPrice)) * 100}%`
+                      }"
+                    ></div>
+                    
+                    <!-- Min Handle -->
+                    <div
+                      class="absolute w-6 h-6 bg-primary rounded-full -mt-2 cursor-pointer shadow-md ring-4 ring-primary/20 hover:ring-primary/30 transition-all duration-200"
+                      :style="{
+                        left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`,
+                        marginLeft: '-12px'
+                      }"
+                      @mousedown="startDrag($event, 'min')"
+                      @touchstart="startDrag($event, 'min')"
+                    ></div>
+                    
+                    <!-- Max Handle -->
+                    <div
+                      class="absolute w-6 h-6 bg-primary rounded-full -mt-2 cursor-pointer shadow-md ring-4 ring-primary/20 hover:ring-primary/30 transition-all duration-200"
+                      :style="{
+                        left: `${((priceRange[1] - minPrice) / (maxPrice - minPrice)) * 100}%`,
+                        marginLeft: '-12px'
+                      }"
+                      @mousedown="startDrag($event, 'max')"
+                      @touchstart="startDrag($event, 'max')"
+                    ></div>
                   </div>
-                  <div class="relative w-1/2">
-                    <span class="text-sm font-medium text-muted-foreground">Max Price</span>
-                    <div class="flex items-center mt-2">
-                      <span class="text-sm mr-1">$</span>
-                      <input
-                        type="number"
-                        :min="priceRange[0] + 1"
-                        :max="maxPrice"
-                        v-model.number="priceRange[1]"
-                        class="w-full p-2 border border-input rounded-md text-center"
-                      />
+
+                  <!-- Fixed Price inputs with dollar sign next to input -->
+                  <div class="flex justify-between mt-8 gap-4">
+                    <div class="w-1/2">
+                      <div class="mb-2 text-sm font-medium text-muted-foreground">Min Price</div>
+                      <div class="flex items-center">
+                        <div class="flex-none flex items-center justify-center h-10 w-8 bg-muted/40 border border-r-0 border-input rounded-l-md">
+                          <span class="text-muted-foreground">$</span>
+                        </div>
+                        <input
+                          type="number"
+                          :min="minPrice"
+                          :max="maxPrice"
+                          v-model.number="minPriceInput"
+                          @blur="validateMinPrice"
+                          @keyup.enter="validateMinPrice"
+                          class="w-full h-10 p-2 border border-input rounded-r-md text-right bg-background"
+                        />
+                      </div>
+                    </div>
+                    <div class="w-1/2">
+                      <div class="mb-2 text-sm font-medium text-muted-foreground">Max Price</div>
+                      <div class="flex items-center">
+                        <div class="flex-none flex items-center justify-center h-10 w-8 bg-muted/40 border border-r-0 border-input rounded-l-md">
+                          <span class="text-muted-foreground">$</span>
+                        </div>
+                        <input
+                          type="number"
+                          :min="minPrice"
+                          :max="maxPrice"
+                          v-model.number="maxPriceInput"
+                          @blur="validateMaxPrice"
+                          @keyup.enter="validateMaxPrice"
+                          class="w-full h-10 p-2 border border-input rounded-r-md text-right bg-background"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
             <!-- Meal Type Filter with Icons -->
             <div class="mb-6">
@@ -543,6 +551,8 @@ export default {
       minPrice: 0,
       maxPrice: 30,
       priceRange: [0, 30],
+      minPriceInput: 0,
+      maxPriceInput: 30,
       isDragging: false,
       activeDragHandle: null,
       
@@ -612,6 +622,16 @@ export default {
       return this.priceRange[0] !== this.minPrice || this.priceRange[1] !== this.maxPrice;
     }
   },
+  watch: {
+    // Update input fields when price range changes via slider
+    'priceRange': {
+      handler(newValue) {
+        this.minPriceInput = newValue[0];
+        this.maxPriceInput = newValue[1];
+      },
+      immediate: true
+    }
+  },
   created() {
     this.fetchProducts()
   },
@@ -628,6 +648,9 @@ export default {
     style.innerHTML = `html { overflow-y: scroll !important; }`
     document.head.appendChild(style)
     this.injectedStyle = style
+    
+    // Initialize price input fields
+    this.initPriceInputs()
   },
   beforeUnmount() {
     // Clean up event listeners
@@ -666,6 +689,52 @@ export default {
     },
     resetPriceRange() {
       this.priceRange = [this.minPrice, this.maxPrice];
+      this.minPriceInput = this.minPrice;
+      this.maxPriceInput = this.maxPrice;
+    },
+    
+    // Validate and update min price
+    validateMinPrice() {
+      let newMin = Number(this.minPriceInput);
+      
+      // Enforce minimum value
+      if (isNaN(newMin) || newMin < this.minPrice) {
+        newMin = this.minPrice;
+      }
+      
+      // Enforce maximum value (must be less than max price)
+      if (newMin >= this.priceRange[1]) {
+        newMin = this.priceRange[1] - 1;
+      }
+      
+      // Update both the input field and the price range
+      this.minPriceInput = newMin;
+      this.priceRange = [newMin, this.priceRange[1]];
+    },
+    
+    // Validate and update max price
+    validateMaxPrice() {
+      let newMax = Number(this.maxPriceInput);
+      
+      // Enforce maximum value
+      if (isNaN(newMax) || newMax > this.maxPrice) {
+        newMax = this.maxPrice;
+      }
+      
+      // Enforce minimum value (must be greater than min price)
+      if (newMax <= this.priceRange[0]) {
+        newMax = this.priceRange[0] + 1;
+      }
+      
+      // Update both the input field and the price range
+      this.maxPriceInput = newMax;
+      this.priceRange = [this.priceRange[0], newMax];
+    },
+    
+    // Initialize price input fields when component is mounted
+    initPriceInputs() {
+      this.minPriceInput = this.priceRange[0];
+      this.maxPriceInput = this.priceRange[1];
     },
     
     async fetchProducts() {
@@ -698,6 +767,8 @@ export default {
             this.minPrice = Math.floor(Math.min(...this.products.map(p => p.price)))
             this.maxPrice = Math.ceil(Math.max(...this.products.map(p => p.price)))
             this.priceRange = [this.minPrice, this.maxPrice]
+            this.minPriceInput = this.minPrice;
+            this.maxPriceInput = this.maxPrice;
           }
         } else {
           console.error('No products available')
@@ -756,6 +827,8 @@ export default {
     clearFilters() {
       this.selectedTags = []
       this.priceRange = [this.minPrice, this.maxPrice]
+      this.minPriceInput = this.minPrice;
+      this.maxPriceInput = this.maxPrice;
       this.mealTypes = []
       this.searchTerm = ''
       this.sortOption = 'default'
