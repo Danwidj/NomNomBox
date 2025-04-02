@@ -508,10 +508,10 @@ export default function DateBasedDriverSchedule() {
     // Reset the changes tracking after submission
     deletedTimeslots.current.clear();
 
-    toast.success("Schedule Updated", {
-      description:
-        "Your flexible working schedule has been successfully updated.",
-    });
+    // toast.success("Schedule Updated", {
+    //   description:
+    //     "Your flexible working schedule has been successfully updated.",
+    // });
 
     // Switch to existing tab
     setActiveTab("existing");
@@ -534,8 +534,11 @@ export default function DateBasedDriverSchedule() {
         setActiveTab("existing");
       })
       .catch((error) => {
-        console.error("Error updating schedule:", error);
-        toast.error("Failed to update schedule");
+        console.log("Error updating schedule:", error);
+        toast.error(
+          "Failed to update schedule. One of the timeslots you are attempting to delete already has an assigned delivery"
+        );
+        deletedTimeslots.current.clear();
       });
   };
 

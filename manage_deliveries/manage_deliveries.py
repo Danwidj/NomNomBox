@@ -371,11 +371,12 @@ def update_availability():
                     # if change["timeslot"] == assigned_timeslot or change["timeslot"] == assigned_timeslot + 1800:
                     #     occupied_timeslots.append(change["timeslot"])
             producer.send(KAFKA_TOPIC, value=json.dumps(delivery_request).encode())
+            occupied_timeslots = [t for timeslot in occupied_timeslots for t in (timeslot, timeslot + 30 * 60)]
 
             if len(occupied_timeslots) > 0:
                 # check if the driver is already assigned to any deliveries in the occupied timeslots
                 # if so, return error
-                response = requests.get("/deliveries?driver_id=" + str(delivery_request["driver_id"]))
+                response = requests.get("http://127.0.0.1:5000/deliveries?driver_id=" + str(delivery_request["driver_id"]))
                 if response.status_code != 200:
                     return jsonify({
                         "code": response.status_code,
@@ -383,18 +384,27 @@ def update_availability():
                         "error": response.json()
                     }), response.status_code
                 else:
-                    deliveries = response.json()
+                    deliveries = response.json()["data"]
                     for delivery in deliveries:
                         if delivery["timeslot"] in occupied_timeslots and delivery["status"] != "Received by Customer":
                             return jsonify({
                                 "code": 400,
                                 "message": "Driver is already assigned to a delivery in the occupied timeslot",
                             }), 400
+                
+                result = update_driver_availability(delivery_request)
+                if result.status_code != 200:
+                    return jsonify({
+                        "code": result.status_code,
+                        "message": "Failed to update availability",
+                        "error": result.json()
+                    }), result.status_code
+                else:
+                    return jsonify({
+                        "code": result.status_code,
+                        "results": result.json()["results"],
+                    }), result.status_code
 
-                return jsonify({
-                    "code": 200,
-                    "message": "Request to modify timeslots pending. The system is checking if there are available drivers that can be re-assigned",
-                }), 200
             else:
                 result = update_driver_availability(delivery_request)
                 if result.status_code != 200:
