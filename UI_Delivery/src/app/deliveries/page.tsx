@@ -42,7 +42,7 @@ export default function DeliveryList() {
     const fetchDeliveries = async () => {
       try {
         // Replace with your actual API endpoint
-        const driver_id = 14;
+        const driver_id = 15;
         const response = await fetch(
           `http://localhost:5000/deliveries?driver_id=${driver_id}`
         );

@@ -48,7 +48,7 @@ user_URL = "http://customer:5002"
 schedule_URL = "http://schedule:5001"
 order_URL = "http://order:5003"
 delivery_URL = "http://delivery:5000"
-availability_URL = "https://personal-6fbyxkeb.outsystemscloud.com/DriverAPI_REST/rest/Driver/Addorupdate_availability"
+driver_availability_URL = "https://personal-6fbyxkeb.outsystemscloud.com/Driver/rest/DriverAPI/drivers/timeslots/"
 
 
 # RabbitMQ
@@ -136,8 +136,9 @@ def create_delivery(delivery_details):
     delivery = invoke_http(delivery_URL + "/delivery", json=delivery_details, method='POST')
     return delivery
 
-def update_availability(availability_details):
-    availability = invoke_http(availability_URL, json=availability_details, method='POST')
+def update_driver_availability(availability_details):
+    availability = requests.post(driver_availability_URL, json=availability_details)
+    # availability = invoke_http(driver_availability_URL, json=availability_details, method='POST')
     return availability
 
 def check_driver_delivery_assignment(driver_id):
@@ -185,13 +186,7 @@ def process_place_delivery_request(delivery_request):
         
         user_address = user_information["data"]["address"]
 
-        
-
-
-
-
-
-
+    
         #2 send the desired timeslot to schedule service
         # time to be in unix timestamp
         desired_delivery_time = delivery_request["delivery_time"]
@@ -364,12 +359,12 @@ def update_availability():
             delivery_request = request.get_json()
             print("\nReceived a update availability request in JSON:", delivery_request)
             # first check if driver has already been assigned to any deliveries if he wants to remove timeslot
-            driver_id = delivery_request["driver_id"]
+            # driver_id = delivery_request["driver_id"]
             # delivery_assignments = check_driver_delivery_assignment(driver_id)
             timeslot_changes = delivery_request["changes"]
             occupied_timeslots= []
             for change in timeslot_changes:
-                if change["change_type"] == "remove":
+                if change["change_type"] == "delete":
                     occupied_timeslots.append(change["timeslot"])
                     # for assignment in delivery_assignments:
                     # assigned_timeslot = convert_to_unix(assignment["timeslot"])
@@ -378,13 +373,43 @@ def update_availability():
             producer.send(KAFKA_TOPIC, value=json.dumps(delivery_request).encode())
 
             if len(occupied_timeslots) > 0:
+                # check if the driver is already assigned to any deliveries in the occupied timeslots
+                # if so, return error
+                response = requests.get("/deliveries?driver_id=" + str(delivery_request["driver_id"]))
+                if response.status_code != 200:
+                    return jsonify({
+                        "code": response.status_code,
+                        "message": "Failed to get deliveries",
+                        "error": response.json()
+                    }), response.status_code
+                else:
+                    deliveries = response.json()
+                    for delivery in deliveries:
+                        if delivery["timeslot"] in occupied_timeslots and delivery["status"] != "Received by Customer":
+                            return jsonify({
+                                "code": 400,
+                                "message": "Driver is already assigned to a delivery in the occupied timeslot",
+                            }), 400
+
                 return jsonify({
                     "code": 200,
                     "message": "Request to modify timeslots pending. The system is checking if there are available drivers that can be re-assigned",
                 }), 200
             else:
-                result = update_availability(delivery_request)
-                return jsonify(result), result["code"]
+                result = update_driver_availability(delivery_request)
+                if result.status_code != 200:
+                    return jsonify({
+                        "code": result.status_code,
+                        "message": "Failed to update availability",
+                        "error": result.json()
+                    }), result.status_code
+                else:
+                    return jsonify({
+                        "code": result.status_code,
+                        "results": result.json()["results"],
+                    }), result.status_code
+                
+
 
 
 
@@ -394,6 +419,7 @@ def update_availability():
             # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             # ex_str = str(e) + " at " + str(exc_type) + ": " + fname + ": line " + str(exc_tb.tb_lineno)
             # print(ex_str)
+            logging.error("Exception occurred while updating availability:\n%s", traceback.format_exc())
 
             # return jsonify({
             #     "code": 500,

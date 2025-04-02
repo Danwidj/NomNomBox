@@ -11,9 +11,11 @@ import time
 from kafka import KafkaConsumer
 from datetime import timedelta
 import traceback
-import redis_utils
+import redis_utils 
+import logging
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
 
 CORS(app)
 load_dotenv(".env")
@@ -66,6 +68,7 @@ def consume(consumer):
         for msg in consumer:
             decoded_message = msg.value.decode('utf-8')
             print(f"Received: {decoded_message}")  # Log message
+            logging.info(f"Received: {decoded_message}")  # Log message
             messages.append(json.loads(decoded_message))  # Store message in memory
 
             received_event = json.loads(decoded_message)
@@ -73,7 +76,7 @@ def consume(consumer):
             driver_id = received_event["driver_id"]
             with app.app_context():
                 for change in schedule_change:
-                    time_slot = datetime.fromtimestamp(int(change["time_slot"]), timezone.utc)
+                    time_slot = datetime.fromtimestamp(int(change["timeslot"]), timezone.utc)
                     # print (start_time, end_time)
                     counter_time = time_slot
                     if change["change_type"] == "add":
@@ -87,7 +90,7 @@ def consume(consumer):
                             counter_time += timedelta(minutes=30)
 
 
-                    elif change["change_type"] == "remove":
+                    elif change["change_type"] == "delete":
                         while counter_time < time_slot + timedelta(minutes=60):
                             db.session.query(Schedule).filter(Schedule.timeslot == counter_time, Schedule.driver_id == driver_id).delete()
                             counter_time += timedelta(minutes=30)
@@ -98,8 +101,8 @@ def consume(consumer):
         # print(f"Messages: {messages}")
             
     except Exception as e:
-        print(f"Exception: {str(e)}")
-        traceback.print_exc()
+        error_trace = traceback.format_exc()
+        logging.exception(f"Error consuming messages: {e} \n {error_trace}")
     
     finally:
         consumer.close()
