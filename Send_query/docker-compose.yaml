@@ -1,0 +1,5 @@
+services:
+  send_query:
+    build: .
+    ports:
+      - "5100:5100"

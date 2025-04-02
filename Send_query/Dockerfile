@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 EXPOSE 5100
 
 # Command to run the microservice
-CMD ["python", "query.py"] 
+CMD ["python", "Send_query.py"] 

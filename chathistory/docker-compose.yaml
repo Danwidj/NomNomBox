@@ -1,0 +1,12 @@
+services:
+  chathistory:
+    build: .
+    ports:
+      - "5012:5012"
+    volumes:
+      - .:/app
+      - ./serviceAccountKey.json:/app/serviceAccountKey.json
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+    restart: unless-stopped
