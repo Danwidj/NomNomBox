@@ -80,7 +80,7 @@ def process_message(ch, method, properties, body):
             # Get user email
 
             subject = f"Payment Successful - Order #{order_id}"
-            body_text = f"Your payment for order #{order_id} with session ID  was successful!"
+            body_text = f"Your payment for order #{order_id} was successful!"
 
             if not customer_email:
                 print(f"No email address found for customer_id. Skipping.")
