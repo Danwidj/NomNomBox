@@ -103,10 +103,10 @@ def process_message(ch, method, properties, body):
             delivery_time = data.get("delivery_time")  #delivery_time - ADDED THE COMMPOSITE!!
             order_id = data.get("order_id")  #order_id - ADDED THE COMMPOSITE!!
 
-            subject = f"Delivery Status Update - Delivery #{delivery_id}"
-            # body_text = f"Your delivery #{delivery_id} status has been updated to {status}."
-            template = string.Template(DELIVERY_PICKEDUP_TEMPLATE) # set template
-            body_text = template.substitute(delivery_id=delivery_id,status=status)
+            subject = f"Delivery Status Update - Delivery #{order_id}"
+            body_text = f"Dear Customer,\n\nYour delivery for #{order_id} status has been updated to {status}. \nThank you for your order!\n"
+            # template = string.Template(DELIVERY_PICKEDUP_TEMPLATE) # set template
+            # body_text = template.substitute(delivery_id=delivery_id,status=status)
 
             if not customer_email:
                 print(f"No email address found for delivery_id. Skipping.")
