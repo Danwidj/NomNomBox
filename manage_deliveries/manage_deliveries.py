@@ -249,6 +249,7 @@ def process_place_delivery_request(delivery_request):
             "delivery_time": desired_delivery_time,
             "order_id": order_id,
             "name": user_information["data"]["name"],
+            "delivery_id": delivery_id,
         }
         notification_message = json.dumps(notification_message)
 
@@ -544,7 +545,7 @@ def update_delivery_status(delivery_id):
                 "delivery_id": delivery_id,
                 "email": customer_info["data"]["email"],
                 "name": customer_info["data"]["name"],
-                # "delivery_time": delivery_ytime,
+                "order_id": order_id,
             }
             notification_message = json.dumps(notification_message)
             

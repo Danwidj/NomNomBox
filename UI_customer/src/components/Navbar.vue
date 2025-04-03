@@ -1,5 +1,5 @@
 <template>
-  <header class="nom-navbar">
+  <header class="fixed-navbar">
     <div class="nom-container navbar-container">
       <div class="flex h-16 items-center justify-between">
         <!-- Logo and Navigation Links -->
@@ -113,6 +113,8 @@
       </div>
     </div>
   </header>
+  <!-- Add spacer to prevent content from hiding under fixed navbar -->
+  <!-- <div class="h-16"></div> -->
 </template>
 
 <script>
@@ -218,7 +220,22 @@ export default {
 </script>
 
 <style scoped>
-/* Additional navbar-specific styles */
+/* Fixed navbar styles */
+.fixed-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  width: 100%;
+  background-color: hsl(var(--primary) / 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Cart update animation */
 .cart-count-update {
   animation: pulse 0.5s ease-in-out;
 }
@@ -256,15 +273,13 @@ export default {
   }
 }
 
-/* New styles for active nav links */
+/* Active nav links */
 .active-nav-link {
   font-weight: 500;
   color: hsl(var(--primary-foreground)) !important;
-  /* Add subtle shadow to enhance button-like appearance */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Optional: Add a subtle bottom border to emphasize active state */
 .active-nav-link::after {
   content: '';
   position: absolute;

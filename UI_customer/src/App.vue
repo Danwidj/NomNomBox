@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col min-h-screen bg-background">
     <Navbar @cart-updated="handleCartUpdate" />
-    <main class="flex-grow">
+    <main class="flex-grow pt-4">
       <RouterView @cart-updated="handleCartUpdate" />
     </main>
     <FooterComponent />
@@ -27,6 +27,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  position: relative;
 }
 
 /* Add to cart animation */
@@ -88,6 +89,12 @@ html, body {
   scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
 }
 
+/* Fix for layout shifting */
+html {
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+}
+
 /* Fix for container width consistency */
 .nom-container {
   box-sizing: border-box;
@@ -100,10 +107,10 @@ html, body {
   width: 100%;
 }
 
-/* Fix for navbar container */
-.nom-navbar .nom-container {
+/* Main content area with proper padding for fixed navbar */
+main {
+  margin-top: 64px; /* Same as navbar height */
   width: 100%;
-  max-width: 100%;
   box-sizing: border-box;
 }
 </style>
@@ -132,5 +139,10 @@ provide('cartUpdateHandler', handleCartUpdate);
 // Initialize auth state when the app loads
 onMounted(() => {
   initAuth();
+  
+  // Force a layout recalculation to ensure navbar is properly positioned
+  setTimeout(() => {
+    window.dispatchEvent(new Event('resize'));
+  }, 100);
 });
 </script>
