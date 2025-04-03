@@ -180,6 +180,33 @@ export default {
       }
 
       console.log('Payment confirmed for order:', this.orderId)
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''
+    const finalizePayload = {
+      session_id: sessionId,
+      orderId: this.orderId,
+      user_id: this.userId,
+      token: token // so the backend can fetch user’s email
+    }
+
+    console.log('Calling /order/payment-success with:', finalizePayload)
+
+    const finalizeResponse = await fetch('http://localhost:5005/order/payment-success', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}` // if your composite needs auth
+      },
+      body: JSON.stringify(finalizePayload),
+    })
+
+    const finalizeData = await finalizeResponse.json()
+    if (finalizeResponse.ok) {
+      sessionStorage.removeItem('shoppingCart')
+      console.log('Payment finalized on backend, email should be sent now:', finalizeData)
+    } else {
+      console.error('Error finalizing payment success:', finalizeData)
+    }
+
     } catch (error) {
       console.error('Error verifying payment:', error)
     }

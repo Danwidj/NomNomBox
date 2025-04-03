@@ -158,6 +158,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "9000:9000"
+    environment:
+    - RABBITMQ_HOST=rabbitmq
+    - RABBITMQ_PORT=5672
+    depends_on:
+      - rabbitmq
 
 networks:
   default:
