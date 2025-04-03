@@ -52,11 +52,13 @@ export default function DeliveryList() {
           return;
         }
         // Fetch deliveries from the API
-        const response = await fetch(`http://localhost:5000/deliveries?driver_id=${driver_id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(`http://localhost:5000/deliveries?driver_id=${driver_id}`);
+        // add the portion below for JWT auth:
+        // , {
+        //   headers: {
+        //     Authorization: `Bearer ${token}`,
+        //   },
+        // });
 
         console.log(response);
         const jsonResponse = await response.json();
