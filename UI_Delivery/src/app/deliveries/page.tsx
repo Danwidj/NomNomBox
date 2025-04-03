@@ -42,10 +42,22 @@ export default function DeliveryList() {
     const fetchDeliveries = async () => {
       try {
         // Replace with your actual API endpoint
-        const driver_id = 1;
-        const response = await fetch(
-          `http://localhost:5000/deliveries?driver_id=${driver_id}`
-        );
+        const driver_id = localStorage.getItem("driver_id");
+        const token = localStorage.getItem("auth_token");
+        // Check if driver_id and token are available
+        // If not, redirect to login page
+        if (!driver_id || !token) {
+          alert("Not authenticated. Please log in again.");
+          window.location.href = "/login";
+          return;
+        }
+        // Fetch deliveries from the API
+        const response = await fetch(`http://localhost:5000/deliveries?driver_id=${driver_id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         console.log(response);
         const jsonResponse = await response.json();
         const data = jsonResponse.data;
