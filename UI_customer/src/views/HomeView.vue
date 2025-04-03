@@ -127,7 +127,6 @@
             
             <div class="flex justify-between items-center mt-4">
               <p class="text-xl font-bold text-primary">${{ product.price.toFixed(2) }}</p>
-              <router-link :to="'/products'" class="nom-btn-outline px-3 py-1 text-sm">View</router-link>
             </div>
           </div>
         </div>

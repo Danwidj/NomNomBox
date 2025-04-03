@@ -13,6 +13,7 @@
             NomNomBox
           </RouterLink>
           
+          <!-- Desktop Navigation Links - hidden below md breakpoint -->
           <nav class="hidden md:flex items-center space-x-1">
             <RouterLink 
               to="/" 
@@ -20,9 +21,7 @@
               :class="{ 'active-nav-link': $route.path === '/' }"
             >
               <span class="relative z-10">Home</span>
-              <!-- Hover background for inactive links -->
               <span v-if="$route.path !== '/'" class="absolute inset-0 bg-white/10 rounded-md scale-0 group-hover:scale-100 transition-transform duration-200 origin-center"></span>
-              <!-- Active background that's always visible when route is active -->
               <span v-if="$route.path === '/'" class="absolute inset-0 bg-white/20 rounded-md"></span>
             </RouterLink>
             
@@ -79,9 +78,9 @@
           </nav>
         </div>
 
-        <!-- Cart & Login/Logout -->
+        <!-- Cart & Login/Logout & Hamburger -->
         <div class="flex items-center gap-3">
-          <!-- Cart Icon with count (Mobile) -->
+          <!-- Cart Icon with count (only below md breakpoint) -->
           <RouterLink 
             v-if="authState" 
             to="/Cart" 
@@ -101,6 +100,45 @@
             </span>
           </RouterLink>
 
+          <!-- Hamburger Menu Button (only below md breakpoint) -->
+          <button 
+            @click="isMenuOpen = !isMenuOpen" 
+            class="md:hidden p-2 text-primary-foreground hover:text-white transition-colors focus:outline-none"
+            aria-label="Toggle navigation menu"
+          >
+            <svg 
+              v-if="!isMenuOpen" 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round"
+            >
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            <svg 
+              v-else
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
           <!-- Login/Logout Button with hover effect -->
           <button 
             @click="handleAuth" 
@@ -112,13 +150,88 @@
         </div>
       </div>
     </div>
+
+    <!-- Mobile Menu (only shows below md breakpoint) -->
+    <div 
+      v-show="isMenuOpen" 
+      class="md:hidden bg-primary border-t border-white/10"
+    >
+      <div class="px-4 py-3 space-y-2">
+        <RouterLink 
+          to="/" 
+          class="block px-3 py-2 nom-nav-link rounded-md transition-colors group relative overflow-hidden"
+          :class="{ 'active-mobile-nav-link': $route.path === '/' }"
+          @click="isMenuOpen = false"
+        >
+          <span class="relative z-10">Home</span>
+          <!-- Hover background for inactive links -->
+          <span v-if="$route.path !== '/'" class="absolute inset-0 bg-white/10 rounded-md scale-0 group-hover:scale-100 transition-transform duration-200 origin-center"></span>
+          <!-- Active background that's always visible when route is active -->
+          <span v-if="$route.path === '/'" class="absolute inset-0 bg-white/20 rounded-md"></span>
+        </RouterLink>
+        
+        <RouterLink 
+          to="/Product" 
+          class="block px-3 py-2 nom-nav-link rounded-md transition-colors group relative overflow-hidden"
+          :class="{ 'active-mobile-nav-link': $route.path === '/Product' }"
+          @click="isMenuOpen = false"
+        >
+          <span class="relative z-10">Products</span>
+          <span v-if="$route.path !== '/Product'" class="absolute inset-0 bg-white/10 rounded-md scale-0 group-hover:scale-100 transition-transform duration-200 origin-center"></span>
+          <span v-if="$route.path === '/Product'" class="absolute inset-0 bg-white/20 rounded-md"></span>
+        </RouterLink>
+        
+        <RouterLink 
+          v-if="authState" 
+          to="/Cart" 
+          class="block px-3 py-2 nom-nav-link rounded-md transition-colors group relative overflow-hidden"
+          :class="{ 'active-mobile-nav-link': $route.path === '/Cart' }"
+          @click="isMenuOpen = false"
+        >
+          <span class="relative z-10 flex items-center">
+            Shopping Cart
+            <span 
+              v-if="cartItemCount > 0" 
+              class="ml-2 bg-white text-primary text-xs rounded-full h-5 min-w-5 flex items-center justify-center px-1 font-medium"
+            >
+              {{ cartItemCount }}
+            </span>
+          </span>
+          <span v-if="$route.path !== '/Cart'" class="absolute inset-0 bg-white/10 rounded-md scale-0 group-hover:scale-100 transition-transform duration-200 origin-center"></span>
+          <span v-if="$route.path === '/Cart'" class="absolute inset-0 bg-white/20 rounded-md"></span>
+        </RouterLink>
+        
+        <RouterLink 
+          to="/Chatbot" 
+          class="block px-3 py-2 nom-nav-link rounded-md transition-colors group relative overflow-hidden"
+          :class="{ 'active-mobile-nav-link': $route.path === '/Chatbot' }"
+          @click="isMenuOpen = false"
+        >
+          <span class="relative z-10">Chatbot</span>
+          <span v-if="$route.path !== '/Chatbot'" class="absolute inset-0 bg-white/10 rounded-md scale-0 group-hover:scale-100 transition-transform duration-200 origin-center"></span>
+          <span v-if="$route.path === '/Chatbot'" class="absolute inset-0 bg-white/20 rounded-md"></span>
+        </RouterLink>
+        
+        <RouterLink 
+          v-if="authState" 
+          to="/profile" 
+          class="block px-3 py-2 nom-nav-link rounded-md transition-colors group relative overflow-hidden"
+          :class="{ 'active-mobile-nav-link': $route.path === '/profile' }"
+          @click="isMenuOpen = false"
+        >
+          <span class="relative z-10">Profile</span>
+          <span v-if="$route.path !== '/profile'" class="absolute inset-0 bg-white/10 rounded-md scale-0 group-hover:scale-100 transition-transform duration-200 origin-center"></span>
+          <span v-if="$route.path === '/profile'" class="absolute inset-0 bg-white/20 rounded-md"></span>
+        </RouterLink>
+      </div>
+    </div>
   </header>
-  <!-- Add spacer to prevent content from hiding under fixed navbar -->
-  <!-- <div class="h-16"></div> -->
+  <!-- Spacer to prevent content from hiding under fixed navbar -->
+  <div class="h-16"></div>
 </template>
 
 <script>
-import { ref, onMounted, watch, inject } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { isAuthenticated, logout, initAuth } from "@/stores/auth"; 
 
@@ -133,6 +246,7 @@ export default {
     const cartItemCount = ref(0);
     const cartCountAnimating = ref(false);
     const previousCartCount = ref(0);
+    const isMenuOpen = ref(false);
     
     // Initialize auth state when component mounts
     onMounted(() => {
@@ -140,24 +254,30 @@ export default {
       authState.value = isAuthenticated.value;
       updateCartCount();
       
-      // Listen for cart updates from other components
+      // Listen for cart updates
       window.addEventListener('cartUpdated', () => {
         updateCartCount(true);
       });
       
-      // Also listen for storage events (for when cart is updated in another tab)
+      // Listen for storage events
       window.addEventListener('storage', (event) => {
         if (event.key === 'shoppingCart') {
           updateCartCount(true);
         }
       });
       
-      // Set up a polling mechanism to check the cart regularly
-      // This is a fallback in case events are missed
+      // Cart polling fallback
       setInterval(() => updateCartCount(false), 5000);
+      
+      // Close menu on larger screen sizes
+      window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768) {
+          isMenuOpen.value = false;
+        }
+      });
     });
     
-    // Watch for changes in the global auth state
+    // Watch for auth state changes
     watch(() => isAuthenticated.value, (newValue) => {
       authState.value = newValue;
       if (newValue) {
@@ -166,6 +286,11 @@ export default {
         cartItemCount.value = 0;
         previousCartCount.value = 0;
       }
+    });
+    
+    // Close menu on route change
+    watch(() => route.path, () => {
+      isMenuOpen.value = false;
     });
 
     const updateCartCount = (animate = false) => {
@@ -176,10 +301,8 @@ export default {
       if (cartData) {
         try {
           const cart = JSON.parse(cartData);
-          // Calculate total items by summing up quantities
           const newCount = cart.reduce((total, item) => total + (item.quantity || 1), 0);
           
-          // Only animate if count has changed and animation is requested
           if (newCount !== previousCartCount.value && animate) {
             cartCountAnimating.value = true;
             setTimeout(() => {
@@ -213,7 +336,8 @@ export default {
       handleAuth,
       route,
       cartItemCount,
-      cartCountAnimating
+      cartCountAnimating,
+      isMenuOpen
     };
   }
 };
@@ -290,5 +414,35 @@ export default {
   height: 2px;
   background-color: hsl(var(--primary-foreground));
   border-radius: 1px;
+}
+
+/* Mobile navigation active and hover states */
+.active-mobile-nav-link {
+  font-weight: 500;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Enhanced mobile menu styles */
+.mobile-menu {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  animation: slideIn 0.2s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Improve hover state visibility on mobile */
+@media (hover: hover) {
+  .mobile-menu .nom-nav-link:hover {
+    background-color: hsla(var(--primary-foreground), 0.05);
+  }
 }
 </style>
