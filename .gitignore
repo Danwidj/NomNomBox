@@ -40,3 +40,4 @@ customer/.env
 inventory/.env
 order/.env
 structure.txt
+notifications/notifications_atomic_service_firebase_adminsdk_fbsvc_d4e660c43c.json

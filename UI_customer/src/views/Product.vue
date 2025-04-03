@@ -434,8 +434,17 @@
                   <button 
                     @click="addToCart(product, $event.target)" 
                     class="nom-btn-primary py-2 relative overflow-hidden"
+                    :class="{'opacity-90 hover:opacity-100': isLoggedIn, 'bg-muted text-muted-foreground hover:bg-muted/80': !isLoggedIn}"
+                    :title="isLoggedIn ? 'Add to Cart' : 'Please log in to add items to your cart'"
                   >
-                    Add to Cart
+                    <span v-if="!isLoggedIn" class="flex items-center justify-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                      Log in to Add
+                    </span>
+                    <span v-else>Add to Cart</span>
                     <span 
                       v-if="product.cartAnimation" 
                       class="absolute inset-0 bg-white/30 add-to-cart-ripple"
@@ -506,8 +515,17 @@
         <button 
           @click="addToCart(selectedProduct)" 
           class="nom-btn-primary"
+          :class="{'opacity-90 hover:opacity-100': isLoggedIn, 'bg-muted text-muted-foreground hover:bg-muted/80': !isLoggedIn}"
+          :title="isLoggedIn ? 'Add to Cart' : 'Please log in to add items to your cart'"
         >
-          Add to Cart
+          <span v-if="!isLoggedIn" class="flex items-center justify-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Log in to Add
+          </span>
+          <span v-else>Add to Cart</span>
         </button>
         <button 
           @click="closeModal" 
@@ -568,6 +586,18 @@ export default {
     }
   },
   computed: {
+    // Check if user is logged in
+// Add this to the computed properties in Product.vue
+    isLoggedIn() {
+      // Check both sessionStorage and the global auth state
+      const customerId = sessionStorage.getItem('customerId');
+      const token = sessionStorage.getItem('token');
+      const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+      
+      // User is only considered logged in if all checks pass
+      return !!(customerId && token && isAuthenticated);
+    },
+    
     uniqueDietaryTags() {
       const allTags = this.products.flatMap((product) => product.dietaryTags || [])
       return [...new Set(allTags)]
@@ -780,38 +810,45 @@ export default {
       }
     },
     addToCart(product, buttonEl) {
-      const user = sessionStorage.getItem('customerId')
-      if (!user) {
-        this.$router.push('/login')
-        return
-      }
+  // Check if user is properly logged in
+  if (!this.isLoggedIn) {
+    // Show a toast notification informing the user they need to log in
+    this.showToastNotification('Please log in to add items to your cart');
+    
+    // Redirect to login page after a short delay
+    setTimeout(() => {
+      this.$router.push('/login');
+    }, 1500);
+    return;
+  }
 
-      let cart = JSON.parse(sessionStorage.getItem('shoppingCart')) || []
-      let existingItem = cart.find((item) => item.id === product.id)
+  // If user is logged in, continue with adding to cart
+  let cart = JSON.parse(sessionStorage.getItem('shoppingCart')) || [];
+  let existingItem = cart.find((item) => item.id === product.id);
 
-      if (existingItem) {
-        existingItem.quantity++
-      } else {
-        cart.push({ ...product, quantity: 1 })
-      }
+  if (existingItem) {
+    existingItem.quantity++;
+  } else {
+    cart.push({ ...product, quantity: 1 });
+  }
 
-      sessionStorage.setItem('shoppingCart', JSON.stringify(cart))
-      
-      // Play the add-to-cart animation on the button
-      const productToAnimate = this.products.find(p => p.id === product.id)
-      if (productToAnimate) {
-        productToAnimate.cartAnimation = true
-        setTimeout(() => {
-          productToAnimate.cartAnimation = false
-        }, 700)
-      }
-      
-      // Show toast notification
-      this.showToastNotification(`${product.name} added to cart!`)
-      
-      // Emit event for navbar to update cart count
-      this.$emit('cartUpdated')
-    },
+  sessionStorage.setItem('shoppingCart', JSON.stringify(cart));
+  
+  // Play the add-to-cart animation on the button
+  const productToAnimate = this.products.find(p => p.id === product.id);
+  if (productToAnimate) {
+    productToAnimate.cartAnimation = true;
+    setTimeout(() => {
+      productToAnimate.cartAnimation = false;
+    }, 700);
+  }
+  
+  // Show toast notification
+  this.showToastNotification(`${product.name} added to cart!`);
+  
+  // Emit event for navbar to update cart count
+  this.$emit('cartUpdated');
+},
     showToastNotification(message) {
       // Clear any existing timeout
       if (this.toastTimeout) clearTimeout(this.toastTimeout)
