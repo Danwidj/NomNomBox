@@ -164,8 +164,36 @@ def get_orders():
     except Exception as e:
         logging.error("Error fetching orders: %s", str(e))
 
+# Add this route handler to your order.py file
 
+@app.route("/api/orders/<string:order_id>/update-status", methods=["PUT"])
+def update_order_status(order_id):
+    try:
+        data = request.json
+        if "status" not in data:
+            return jsonify({"code": 400, "message": "Missing status field"}), 400
 
+        order_ref = db.collection("Orders").document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            return jsonify({"code": 404, "message": "Order not found"}), 404
+
+        # Update the order status
+        order_ref.update({
+            "status": data["status"],
+            "updatedAt": firestore.SERVER_TIMESTAMP
+        })
+
+        return jsonify({
+            "code": 200, 
+            "message": "Order status updated successfully",
+            "orderId": order_id
+        }), 200
+
+    except Exception as e:
+        logging.error("Exception occurred while updating order status:\n%s", traceback.format_exc())
+        return jsonify({"code": 500, "message": f"Error updating order status: {str(e)}"}), 500
 
 # Get All Orders for a Customer
 @app.route("/api/orders/customer/<string:customer_id>", methods=["GET"])
