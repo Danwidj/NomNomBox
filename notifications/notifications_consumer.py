@@ -27,6 +27,7 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", SMTP_USERNAME)
 
 DELIVERY_PICKEDUP_TEMPLATE = os.getenv("DELIVERY_PICKEDUP_TEMPLATE","Dear Customer,\n\nYour delivery {delivery_id} status has been updated to {status} \nThank you for your order!\n")
+PAYMENT_SUCCESS_TEMPLATE_HTML = os.getenv("PAYMENT_SUCCESS_TEMPLATE_HTML")
 
 
 print(
@@ -80,14 +81,17 @@ def process_message(ch, method, properties, body):
             # Get user email
 
             subject = f"Payment Successful - Order #{order_id}"
-            body_text = f"Your payment for order #{order_id} was successful!"
+            # body_text = f"Your payment for order #{order_id} was successful!"
+            template = string.Template(PAYMENT_SUCCESS_TEMPLATE_HTML)
+            body_text = template.substitute(order_id=order_id)
+            email_success = send_email(customer_email, subject, body_text)
 
             if not customer_email:
                 print(f"No email address found for customer_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
-            email_success = send_email(customer_email, subject, body_text)
+            # email_success = send_email(customer_email, subject, body_text)
 
         elif routing_key in ( #Change condition of key routing here
             "delivery.pickedup",
