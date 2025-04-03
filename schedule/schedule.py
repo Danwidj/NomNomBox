@@ -13,6 +13,7 @@ from datetime import timedelta
 import traceback
 import redis_utils 
 import logging
+from KafkaManager import KafkaManager
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
@@ -33,11 +34,7 @@ KAFKA_BROKER_URL = "kafka:9092"
 KAFKA_TOPIC = "driver-schedule-updates"
 
 messages = []
-consumer = None
-
-
-
-
+logging.basicConfig(level=logging.INFO)
 class Schedule(db.Model):
     __tablename__ = "schedule"
 
@@ -70,7 +67,6 @@ def consume(consumer):
             print(f"Received: {decoded_message}")  # Log message
             logging.info(f"Received: {decoded_message}")  # Log message
             messages.append(json.loads(decoded_message))  # Store message in memory
-
             received_event = json.loads(decoded_message)
             schedule_change = received_event["changes"]
             driver_id = received_event["driver_id"]
@@ -108,53 +104,18 @@ def consume(consumer):
         consumer.close()
         print("Consumer closed")
 
-def start_kafka_consumer():
-    global consumer
-    while True:  # Keep the consumer alive
-        consumer = None
-        try:
-            print("Starting Kafka consumer...")
-            if consumer is None:            
-                consumer = KafkaConsumer(
-                    KAFKA_TOPIC,
-                    bootstrap_servers=KAFKA_BROKER_URL,
-                    group_id="my-group",
-                    auto_offset_reset="earliest",
-                    heartbeat_interval_ms=1000,
-                    api_version=(2, 6, 0)
-                )
-            consume(consumer)  # Start consuming messages
+KafkaManager.start_kafka_consumer(KAFKA_TOPIC, KAFKA_BROKER_URL)
 
-        except Exception as e:
-            print(f"Kafka consumer failed: {e}")
-            traceback.print_exc()
-            print("Reconnecting in 10 seconds...")
-            time.sleep(10)  # Wait before reconnecting
+def consuming():
+    while True:
+        if KafkaManager.consumer is not None:
+            consume(KafkaManager.consumer)
 
-# def start_kafka_consumer():
-#     global consumer
 
-#     try:
-#         print("Starting Kafka consumer...")
-#         if consumer is None:            
-#             consumer = KafkaConsumer(
-#                 KAFKA_TOPIC,
-#                 bootstrap_servers=KAFKA_BROKER_URL,
-#                 group_id="my-group",
-#                 auto_offset_reset="earliest",
-#                 heartbeat_interval_ms=1000,
-#             )
-#         consume(consumer)  # Start consuming messages
-
-#     except Exception as e:
-#         print(f"Kafka consumer failed: {e}")
-#         traceback.print_exc()
-#         print("Reconnecting in 10 seconds...")
-#         time.sleep(10)  # Wait before reconnecting
-
+        
 
 # Start Kafka consumer in a separate thread
-thread = threading.Thread(target=start_kafka_consumer, daemon=True)
+thread = threading.Thread(target=consuming, daemon=True)
 thread.start()
 
 @app.route("/schedule", methods=["POST"])
