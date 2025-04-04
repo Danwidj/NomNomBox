@@ -164,6 +164,33 @@ services:
     depends_on:
       - rabbitmq
       - rabbitmq_setup
+
+  api-docs:
+    image: NomNomBox/api-docs:latest
+    build:
+      context: ./api-docs
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - order
+      - customer
+      - payment
+      - inventory
+      - delivery
+      - notifications
+      - schedule
+
+  chathistory:
+    image: NomNomBox/chathistory:latest
+    build:
+      context: ./chathistory
+      dockerfile: Dockerfile
+    ports:
+      - "5012:5012"
+    depends_on:
+      - api-docs
+
 networks:
   default:
     driver: bridge
