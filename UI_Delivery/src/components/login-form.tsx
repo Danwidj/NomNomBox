@@ -8,6 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export function LoginForm({
   className,
   ...props
@@ -21,7 +23,7 @@ export function LoginForm({
 
     try {
       const response = await fetch(
-        "https://personal-6fbyxkeb.outsystemscloud.com/DriverService/rest/v1/drivers/login/",
+        `${BASE_API_URL}/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -55,9 +57,9 @@ export function LoginForm({
           <form className="p-6 md:p-8" onSubmit={handleLogin}>
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <h1 className="text-2xl font-bold">Welcome Back</h1>
                 <p className="text-balance text-muted-foreground">
-                  Login to your NomNomBox Driver account
+                  Login to your NomNomBox driver account
                 </p>
               </div>
               <div className="grid gap-2">
