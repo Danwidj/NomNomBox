@@ -1,19 +1,21 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useState, useRef } from "react";
+
+import { useEffect, useState, useRef, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Trash2, CalendarIcon, Copy, Clock } from "lucide-react";
+import { Plus, Trash2, CalendarIcon, Clock } from "lucide-react";
 import {
   format,
   fromUnixTime,
   getUnixTime,
   startOfDay,
-  endOfDay,
+  addDays,
+  isBefore,
 } from "date-fns";
 import {
   Popover,
@@ -23,44 +25,39 @@ import {
 import type { DateRange } from "react-day-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { formatOffsetToTime } from "./HelperFunctions";
+import DateCard from "./DateCard";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+import { hasOverlappingTimeslot, doTimeslotsOverlap } from "./HelperFunctions";
+import { DateSchedule, TimeSlot } from "./HelperFunctions";
 import axios from "axios";
+import { time } from "console";
 
-type TimeSlot = {
-  start: number; // Unix timestamp
-  end: number; // Unix timestamp
-  isExisting?: boolean; // Flag to identify if this is an existing timeslot from the backend
-  id?: number; // ID to track timeslots for deletion
-};
+// Time options from 08:00 to 22:00 in one-hour increments (in seconds)
+const TIME_OFFSETS = Array.from({ length: 15 }, (_, i) => (i + 8) * 3600);
 
-type DateSchedule = {
-  date: number; // Unix timestamp (start of day)
-  timeSlots: TimeSlot[];
-};
-
-// Generate time options in Unix format (seconds since epoch)
-// These are offsets from the start of day (in seconds) from 08:00 to 22:00 in one-hour increments
-const TIME_OFFSETS = Array.from({ length: 15 }, (_, i) => {
-  const hour = i + 8; // Start from 8 (8 AM) and go up to 22 (10 PM)
-  return hour * 3600; // Convert to seconds (1 hour = 3600 seconds)
-});
-
+// Main component
 export default function DateBasedDriverSchedule() {
   const [existingSchedule, setExistingSchedule] = useState<DateSchedule[]>([]);
   const [newSchedule, setNewSchedule] = useState<DateSchedule[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [activeTab, setActiveTab] = useState<string>("existing");
-
-  // Store original existing timeslots to track deletions
-  const originalTimeslots = useRef<number[]>([]);
-  const deletedTimeslots = useRef<Set<number>>(new Set()); // Using Set to avoid duplicates
-
-  // Common time slots as offsets from start of day (in seconds)
   const [commonTimeSlots, setCommonTimeSlots] = useState<TimeSlot[]>([
-    { start: 8 * 3600, end: 12 * 3600 }, // 8:00 - 12:00
-    { start: 13 * 3600, end: 17 * 3600 }, // 13:00 - 17:00
+    { start: 8 * 3600, end: 12 * 3600 },
+    { start: 13 * 3600, end: 17 * 3600 },
   ]);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Fetch data
+  // Refs for tracking timeslots
+  const originalTimeslots = useRef<number[]>([]);
+  const deletedTimeslots = useRef<Set<number>>(new Set());
+  //   const timeSlotsBeforeModification = useRef<Set<number>>(new Set());
+
+  // Calculate tomorrow's date for calendar min date
+  const tomorrow = addDays(new Date(), 1);
+
+  // Load initial data
   useEffect(() => {
     const driver_id = localStorage.getItem("driver_id") || "1";
 
@@ -109,8 +106,8 @@ export default function DateBasedDriverSchedule() {
     );
 
     filteredTimeSlots.forEach((startTime) => {
-      const endTime = startTime + 3600; // 1 hour slot (3600 seconds)
-      const dateTimestamp = getStartOfDayUnix(startTime);
+      const endTime = startTime + 3600;
+      const dateTimestamp = getUnixTime(startOfDay(fromUnixTime(startTime)));
 
       if (!groupedByDate[dateTimestamp]) {
         groupedByDate[dateTimestamp] = [];
@@ -120,131 +117,69 @@ export default function DateBasedDriverSchedule() {
         start: startTime,
         end: endTime,
         isExisting,
-        id: startTime, // Use the start time as the ID
+        id: startTime,
       });
     });
 
     return Object.entries(groupedByDate).map(([dateStr, slots]) => ({
-      date: Number.parseInt(dateStr),
+      date: Number(dateStr),
       timeSlots: slots,
     }));
   };
 
-  // Helper to get start of day in Unix time
-  const getStartOfDayUnix = (timestamp: number) => {
-    return getUnixTime(startOfDay(fromUnixTime(timestamp)));
-  };
-
-  // Helper to get end of day in Unix time
-  const getEndOfDayUnix = (timestamp: number) => {
-    return getUnixTime(endOfDay(fromUnixTime(timestamp)));
-  };
-
-  // Helper to format Unix time as HH:MM
-  const formatUnixToTime = (unix: number) => {
-    if (!unix) return "00:00";
-    try {
-      return format(fromUnixTime(unix), "HH:mm");
-    } catch (error) {
-      console.error("Error formatting unix time:", error);
-      return "00:00";
-    }
-  };
-
-  // Helper to format offset seconds as HH:MM
-  const formatOffsetToTime = (offsetSeconds: number) => {
-    try {
-      const hours = Math.floor(offsetSeconds / 3600);
-      const minutes = Math.floor((offsetSeconds % 3600) / 60);
-      return `${hours.toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}`;
-    } catch (error) {
-      console.error("Error formatting offset seconds:", error);
-      return "00:00";
-    }
-  };
-
   // Helper to convert day offset seconds to Unix timestamp
-  const offsetToUnixTime = (dateUnix: number, offsetSeconds: number) => {
-    return dateUnix + offsetSeconds;
-  };
+  const offsetToUnixTime = (dateUnix: number, offsetSeconds: number) =>
+    dateUnix + offsetSeconds;
 
-  // Helper to get time offset from Unix timestamp relative to its day start
-  const getTimeOffsetFromUnix = (unix: number) => {
-    try {
-      const dayStart = getStartOfDayUnix(unix);
-      return unix - dayStart;
-    } catch (error) {
-      console.error("Error getting time offset:", error);
-      return 0;
-    }
-  };
-
+  // Date range selection handlers
   const addDateRange = () => {
-    if (dateRange?.from) {
-      const fromUnix = getUnixTime(startOfDay(dateRange.from));
-      // If to is not defined, use from date as the to date (single date selection)
-      const toUnix = dateRange.to
-        ? getUnixTime(startOfDay(dateRange.to))
-        : fromUnix;
+    if (!dateRange?.from) return;
 
-      // Generate array of days between from and to
-      const days = [];
-      let currentDay = fromUnix;
+    const fromUnix = getUnixTime(startOfDay(dateRange.from));
+    const toUnix = dateRange.to
+      ? getUnixTime(startOfDay(dateRange.to))
+      : fromUnix;
 
-      while (currentDay <= toUnix) {
-        days.push(currentDay);
-        currentDay += 86400; // Add one day in seconds
-      }
+    // Generate array of days between from and to
+    const days = [];
+    let currentDay = fromUnix;
+    while (currentDay <= toUnix) {
+      days.push(currentDay);
+      currentDay += 86400; // Add one day in seconds
+    }
 
-      // Filter out days that are already in the schedule
-      const newDays = days.filter(
-        (day) => !newSchedule.some((item) => item.date === day)
-      );
+    // Filter out days that are already in the schedule
+    const newDays = days.filter(
+      (day) => !newSchedule.some((item) => item.date === day)
+    );
 
-      if (newDays.length > 0) {
-        setNewSchedule((prev) => [
-          ...prev,
-          ...newDays.map((day) => ({
-            date: day,
-            timeSlots: [],
-          })),
-        ]);
-        setDateRange(undefined);
-        toast.success("Dates added", {
-          description: `Added ${newDays.length} new date(s) to your schedule.`,
-        });
-      } else {
-        toast.info("No new dates added", {
-          description: "All selected dates are already in your schedule.",
-        });
-      }
+    if (newDays.length > 0) {
+      setNewSchedule((prev) => [
+        ...prev,
+        ...newDays.map((day) => ({ date: day, timeSlots: [] })),
+      ]);
+      setDateRange(undefined);
+      toast.success("Dates added", {
+        description: `Added ${newDays.length} new date(s) to your schedule.`,
+      });
+    } else {
+      toast.info("No new dates added", {
+        description: "All selected dates are already in your schedule.",
+      });
     }
   };
 
-  const removeDate = (date: number) => {
-    setNewSchedule((prev) => prev.filter((item) => item.date !== date));
-  };
-
-  // Update the removeExistingTimeSlot function to properly track deleted timeslots
+  // Time slot handlers
   const removeExistingTimeSlot = (date: number, index: number) => {
     setExistingSchedule((prev) => {
-      // Get the timeslot to be removed
       const timeslot = prev.find((item) => item.date === date)?.timeSlots[
         index
       ];
 
-      // If it's an original timeslot, add it to the deletedTimeslots set
-      if (
-        timeslot &&
-        timeslot.id &&
-        originalTimeslots.current.includes(timeslot.id)
-      ) {
+      if (timeslot?.id && originalTimeslots.current.includes(timeslot.id)) {
         deletedTimeslots.current.add(timeslot.id);
       }
 
-      // Filter out the deleted timeslot
       return prev
         .map((item) =>
           item.date === date
@@ -254,78 +189,130 @@ export default function DateBasedDriverSchedule() {
               }
             : item
         )
-        .filter((item) => item.timeSlots.length > 0); // Remove dates with no timeslots
+        .filter((item) => item.timeSlots.length > 0);
     });
   };
 
   const addTimeSlot = (date: number) => {
-    setNewSchedule((prev) =>
-      prev.map((item) =>
+    setNewSchedule((prev) => {
+      const dateSchedule = prev.find((item) => item.date === date);
+      if (!dateSchedule) return prev;
+
+      // Default new timeslot
+      const newSlot = {
+        start: offsetToUnixTime(date, 8 * 3600),
+        end: offsetToUnixTime(date, 9 * 3600),
+      };
+
+      // Find a non-overlapping time if possible
+      for (let hour = 8; hour < 21; hour++) {
+        const testSlot = {
+          start: offsetToUnixTime(date, hour * 3600),
+          end: offsetToUnixTime(date, (hour + 1) * 3600),
+        };
+
+        if (
+          !hasOverlappingTimeslot(testSlot, dateSchedule.timeSlots).overlaps
+        ) {
+          return prev.map((item) =>
+            item.date === date
+              ? { ...item, timeSlots: [...item.timeSlots, testSlot] }
+              : item
+          );
+        }
+      }
+
+      // If all slots are taken, add the default one anyway
+      return prev.map((item) =>
         item.date === date
-          ? {
-              ...item,
-              timeSlots: [
-                ...item.timeSlots,
-                {
-                  start: offsetToUnixTime(date, 8 * 3600), // 8:00 AM
-                  end: offsetToUnixTime(date, 9 * 3600), // 9:00 AM
-                },
-              ],
-            }
+          ? { ...item, timeSlots: [...item.timeSlots, newSlot] }
           : item
-      )
-    );
+      );
+    });
   };
 
   const removeTimeSlot = (date: number, index: number) => {
-    setNewSchedule(
-      (prev) =>
-        prev
-          .map((item) =>
-            item.date === date
-              ? {
-                  ...item,
-                  timeSlots: item.timeSlots.filter((_, i) => i !== index),
-                }
-              : item
-          )
-          .filter((item) => item.timeSlots.length > 0) // Remove dates with no timeslots
+    setNewSchedule((prev) =>
+      prev
+        .map((item) =>
+          item.date === date
+            ? {
+                ...item,
+                timeSlots: item.timeSlots.filter((_, i) => i !== index),
+              }
+            : item
+        )
+        .filter((item) => item.timeSlots.length > 0)
     );
+
+    // Clear validation errors when removing a timeslot
+    validateSchedule();
   };
 
+  // Update the updateTimeSlot function to check for overlaps
   const updateTimeSlot = (
     date: number,
     index: number,
     field: "start" | "end",
     offsetSeconds: number
   ) => {
-    setNewSchedule((prev) =>
-      prev.map((item) =>
-        item.date === date
-          ? {
-              ...item,
-              timeSlots: item.timeSlots.map((slot, i) =>
-                i === index
-                  ? {
-                      ...slot,
-                      [field]: offsetToUnixTime(date, offsetSeconds),
-                    }
-                  : slot
-              ),
+    setNewSchedule((prev) => {
+      const updatedSchedule = prev.map((item) => {
+        if (item.date === date) {
+          const updatedTimeSlots = item.timeSlots.map((slot, i) => {
+            if (i === index) {
+              const updatedSlot = {
+                ...slot,
+                [field]: offsetToUnixTime(date, offsetSeconds),
+              };
+
+              // Check for overlaps
+              const { overlaps } = hasOverlappingTimeslot(
+                updatedSlot,
+                item.timeSlots,
+                index
+              );
+              if (overlaps) {
+                toast.warning("Overlapping timeslot", {
+                  description: "This timeslot overlaps with another timeslot.",
+                });
+              }
+
+              // Check for invalid time range
+              if (field === "end" && updatedSlot.end <= updatedSlot.start) {
+                toast.warning("Invalid time range", {
+                  description: "End time must be after start time.",
+                });
+              }
+
+              return updatedSlot;
             }
-          : item
-      )
-    );
+            return slot;
+          });
+
+          return { ...item, timeSlots: updatedTimeSlots };
+        }
+        return item;
+      });
+
+      // Validate the updated schedule
+      validateSchedule(updatedSchedule);
+
+      return updatedSchedule;
+    });
   };
 
+  const removeDate = (date: number) => {
+    setNewSchedule((prev) => {
+      const updatedSchedule = prev.filter((item) => item.date !== date);
+      validateSchedule(updatedSchedule);
+      return updatedSchedule;
+    });
+  };
+
+  // Common time slots handlers
   const addCommonTimeSlot = () => {
-    setCommonTimeSlots((prev) => [
-      ...prev,
-      {
-        start: 8 * 3600, // 8:00 AM offset
-        end: 9 * 3600, // 9:00 AM offset
-      },
-    ]);
+    setCommonTimeSlots((prev) => [...prev, { start: 8 * 3600, end: 9 * 3600 }]);
   };
 
   const removeCommonTimeSlot = (index: number) => {
@@ -337,75 +324,257 @@ export default function DateBasedDriverSchedule() {
     field: "start" | "end",
     offsetSeconds: number
   ) => {
-    setCommonTimeSlots((prev) =>
-      prev.map((slot, i) =>
-        i === index ? { ...slot, [field]: offsetSeconds } : slot
-      )
-    );
+    setCommonTimeSlots((prev) => {
+      const updated = prev.map((slot, i) => {
+        if (i === index) {
+          const updatedSlot = { ...slot, [field]: offsetSeconds };
+
+          // Check for invalid time range
+          if (field === "end" && updatedSlot.end <= updatedSlot.start) {
+            toast.warning("Invalid time range", {
+              description: "End time must be after start time.",
+            });
+          }
+
+          return updatedSlot;
+        }
+        return slot;
+      });
+
+      // Check for overlaps in common time slots
+      for (let i = 0; i < updated.length; i++) {
+        for (let j = i + 1; j < updated.length; j++) {
+          if (doTimeslotsOverlap(updated[i], updated[j])) {
+            toast.warning("Overlapping common time slots", {
+              description: "Some common time slots overlap with each other.",
+            });
+            break;
+          }
+        }
+      }
+
+      return updated;
+    });
   };
 
-  const applyCommonTimeSlotsToAll = () => {
+  // Update the applyCommonTimeSlotsToDate function to ensure proper validation
+  const applyCommonTimeSlotsToDate = (date: number) => {
     // Validate common time slots
-    for (let index = 0; index < commonTimeSlots.length; index++) {
-      const item = commonTimeSlots[index];
-      if (item.start >= item.end) {
-        toast.warning("Invalid Time Slot", {
-          description: "Start time must be before end time.",
-        });
-        return;
-      }
+    let hasInvalidTimeRanges = false;
+    let hasOverlappingSlots = false;
 
-      const otherTimeSlots = commonTimeSlots.filter((_, i) => i !== index);
-      if (!isValidTimeSlot(otherTimeSlots, item.start, item.end)) {
-        toast.warning("Invalid Time Slot", {
-          description: "Time slots cannot overlap.",
-        });
-        return;
+    // Check for invalid time ranges
+    commonTimeSlots.forEach((slot) => {
+      if (slot.end <= slot.start) {
+        hasInvalidTimeRanges = true;
       }
+    });
+
+    // Check for overlaps in common time slots
+    for (let i = 0; i < commonTimeSlots.length; i++) {
+      for (let j = i + 1; j < commonTimeSlots.length; j++) {
+        if (doTimeslotsOverlap(commonTimeSlots[i], commonTimeSlots[j])) {
+          hasOverlappingSlots = true;
+          break;
+        }
+      }
+      if (hasOverlappingSlots) break;
     }
 
-    // Apply common time slots to all dates
-    setNewSchedule((prev) =>
-      prev.map((item) => ({
-        ...item,
-        timeSlots: commonTimeSlots.map((slot) => ({
-          start: offsetToUnixTime(item.date, slot.start),
-          end: offsetToUnixTime(item.date, slot.end),
-        })),
-      }))
-    );
+    if (hasInvalidTimeRanges) {
+      toast.error("Invalid common time slot", {
+        description: "End time must be after start time in common time slots.",
+      });
+      return;
+    }
 
-    toast.success("Common Time Slots Applied", {
-      description: "Applied common time slots to all dates in your schedule.",
-    });
-  };
+    if (hasOverlappingSlots) {
+      toast.error("Overlapping common time slots", {
+        description: "Some common time slots overlap with each other.",
+      });
+      return;
+    }
 
-  const applyCommonTimeSlotsToDate = (date: number) => {
-    setNewSchedule((prev) =>
-      prev.map((item) =>
-        item.date === date
-          ? {
-              ...item,
-              timeSlots: commonTimeSlots.map((slot) => ({
-                start: offsetToUnixTime(date, slot.start),
-                end: offsetToUnixTime(date, slot.end),
-              })),
+    setNewSchedule((prev) => {
+      const updatedSchedule = prev.map((item) => {
+        if (item.date === date) {
+          // Create individual hour slots
+          const individualSlots: TimeSlot[] = [];
+
+          commonTimeSlots.forEach((commonSlot) => {
+            const startHour = Math.floor(commonSlot.start / 3600);
+            const endHour = Math.floor(commonSlot.end / 3600);
+
+            for (let hour = startHour; hour < endHour; hour++) {
+              const newSlot = {
+                start: offsetToUnixTime(date, hour * 3600),
+                end: offsetToUnixTime(date, (hour + 1) * 3600),
+              };
+
+              // Only add if it doesn't overlap with existing slots
+              if (
+                !individualSlots.some((slot) =>
+                  doTimeslotsOverlap(slot, newSlot)
+                )
+              ) {
+                individualSlots.push(newSlot);
+              }
             }
-          : item
-      )
-    );
+          });
 
-    toast.success("Common Time Slots Applied", {
-      description: `Applied common time slots to ${format(
-        fromUnixTime(date),
-        "MMMM d, yyyy"
-      )}.`,
+          return {
+            ...item,
+            timeSlots: individualSlots,
+          };
+        }
+        return item;
+      });
+
+      validateSchedule(updatedSchedule);
+      return updatedSchedule;
     });
+
+    toast.success("Common Time Slots Applied");
   };
 
-  // Update the handleSubmit function to properly handle deleted timeslots
+  // Update the applyCommonTimeSlotsToAll function to ensure proper validation
+  const applyCommonTimeSlotsToAll = () => {
+    // Validate common time slots
+    let hasInvalidTimeRanges = false;
+    let hasOverlappingSlots = false;
+
+    // Check for invalid time ranges
+    commonTimeSlots.forEach((slot) => {
+      if (slot.end <= slot.start) {
+        hasInvalidTimeRanges = true;
+      }
+    });
+
+    // Check for overlaps in common time slots
+    for (let i = 0; i < commonTimeSlots.length; i++) {
+      for (let j = i + 1; j < commonTimeSlots.length; j++) {
+        if (doTimeslotsOverlap(commonTimeSlots[i], commonTimeSlots[j])) {
+          hasOverlappingSlots = true;
+          break;
+        }
+      }
+      if (hasOverlappingSlots) break;
+    }
+
+    if (hasInvalidTimeRanges) {
+      toast.error("Invalid common time slot", {
+        description: "End time must be after start time in common time slots.",
+      });
+      return;
+    }
+
+    if (hasOverlappingSlots) {
+      toast.error("Overlapping common time slots", {
+        description: "Some common time slots overlap with each other.",
+      });
+      return;
+    }
+
+    setNewSchedule((prev) => {
+      const updatedSchedule = prev.map((item) => {
+        // Create individual hour slots
+        const individualSlots: TimeSlot[] = [];
+
+        commonTimeSlots.forEach((commonSlot) => {
+          const startHour = Math.floor(commonSlot.start / 3600);
+          const endHour = Math.floor(commonSlot.end / 3600);
+
+          for (let hour = startHour; hour < endHour; hour++) {
+            const newSlot = {
+              start: offsetToUnixTime(item.date, hour * 3600),
+              end: offsetToUnixTime(item.date, (hour + 1) * 3600),
+            };
+
+            // Only add if it doesn't overlap with existing slots
+            if (
+              !individualSlots.some((slot) => doTimeslotsOverlap(slot, newSlot))
+            ) {
+              individualSlots.push(newSlot);
+            }
+          }
+        });
+
+        return {
+          ...item,
+          timeSlots: individualSlots,
+        };
+      });
+
+      validateSchedule(updatedSchedule);
+      return updatedSchedule;
+    });
+
+    toast.success("Common Time Slots Applied to All Dates");
+  };
+
+  // Calendar date disabler function - disable dates before tomorrow
+  const disableDates = (date: Date) => {
+    return isBefore(date, tomorrow);
+  };
+
+  // Validate the entire schedule for errors
+  const validateSchedule = (scheduleToValidate = newSchedule) => {
+    const errors: string[] = [];
+
+    // Check for empty days
+    const emptyDays = scheduleToValidate.filter(
+      (day) => day.timeSlots.length === 0
+    );
+    if (emptyDays.length > 0) {
+      errors.push("Some days have no timeslots");
+    }
+
+    // Check for invalid time ranges and overlaps
+    scheduleToValidate.forEach((day) => {
+      // Check for invalid time ranges
+      day.timeSlots.forEach((slot) => {
+        if (slot.end <= slot.start) {
+          errors.push(
+            `Invalid time range on ${format(
+              fromUnixTime(day.date),
+              "MMMM d, yyyy"
+            )}`
+          );
+        }
+      });
+
+      // Check for overlapping timeslots
+      for (let i = 0; i < day.timeSlots.length; i++) {
+        for (let j = i + 1; j < day.timeSlots.length; j++) {
+          if (doTimeslotsOverlap(day.timeSlots[i], day.timeSlots[j])) {
+            errors.push(
+              `Overlapping timeslots on ${format(
+                fromUnixTime(day.date),
+                "MMMM d, yyyy"
+              )}`
+            );
+            break;
+          }
+        }
+      }
+    });
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
+  // Update the handleSubmit function to break down timeslots into individual hours and add validations
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log(newSchedule);
+
+    if (!validateSchedule()) {
+      toast.error("Please fix all validation errors before saving", {
+        description: validationErrors.join(", "),
+      });
+      return;
+    }
 
     // Get driver id from local storage
     const driverId = Number.parseInt(localStorage.getItem("driver_id") || "1");
@@ -420,18 +589,6 @@ export default function DateBasedDriverSchedule() {
         change_type: "delete",
       });
     }
-
-    // Add new timeslots to changes
-    // const addedTimeslots = [];
-    // for (const dateSchedule of newSchedule) {
-    //   for (const slot of dateSchedule.timeSlots) {
-    //     changes.push({
-    //       timeslot: slot.start,
-    //       change_type: "add",
-    //     });
-    //     addedTimeslots.push(slot.start);
-    //   }
-    // }
 
     const addedTimeslots = [];
     for (const dateSchedule of newSchedule) {
@@ -538,38 +695,14 @@ export default function DateBasedDriverSchedule() {
         toast.error(
           "Failed to update schedule. One of the timeslots you are attempting to delete already has an assigned delivery"
         );
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
         deletedTimeslots.current.clear();
       });
   };
 
-  const isValidTimeSlot = (
-    timeslots: TimeSlot[],
-    start: number,
-    end: number
-  ) => {
-    if (start >= end) {
-      return false;
-    }
-
-    if (timeslots.length === 0) {
-      return true;
-    }
-
-    for (const timeslot of timeslots) {
-      // Check if the new slot overlaps with any existing slot
-      if (
-        (start >= timeslot.start && start < timeslot.end) ||
-        (end > timeslot.start && end <= timeslot.end) ||
-        (start <= timeslot.start && end >= timeslot.end)
-      ) {
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  // Sort schedule by date
+  // Sort schedules by date
   const sortedExistingSchedule = [...existingSchedule].sort(
     (a, b) => a.date - b.date
   );
@@ -581,6 +714,7 @@ export default function DateBasedDriverSchedule() {
         Set Your Flexible Working Schedule
       </h1>
       <form onSubmit={handleSubmit}>
+        {/* Common Time Slots */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Common Time Slots</CardTitle>
@@ -590,39 +724,37 @@ export default function DateBasedDriverSchedule() {
               {commonTimeSlots.map((slot, index) => (
                 <div key={index} className="flex items-center space-x-4">
                   <div className="grid gap-2">
-                    <Label htmlFor={`common-start-${index}`}>Start Time</Label>
+                    <Label>Start Time</Label>
                     <select
-                      id={`common-start-${index}`}
                       value={slot.start}
                       onChange={(e) =>
                         updateCommonTimeSlot(
                           index,
                           "start",
-                          Number.parseInt(e.target.value)
+                          Number(e.target.value)
                         )
                       }
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     >
                       {TIME_OFFSETS.slice(0, -1).map((offset) => (
-                        <option key={`${index}:${offset}`} value={offset}>
+                        <option key={offset} value={offset}>
                           {formatOffsetToTime(offset)}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor={`common-end-${index}`}>End Time</Label>
+                    <Label>End Time</Label>
                     <select
-                      id={`common-end-${index}`}
                       value={slot.end}
                       onChange={(e) =>
                         updateCommonTimeSlot(
                           index,
                           "end",
-                          Number.parseInt(e.target.value)
+                          Number(e.target.value)
                         )
                       }
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     >
                       {TIME_OFFSETS.slice(1).map((offset) => (
                         <option key={offset} value={offset}>
@@ -655,6 +787,22 @@ export default function DateBasedDriverSchedule() {
           </CardContent>
         </Card>
 
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Validation Errors</AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc pl-5 mt-2">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Tabs */}
         <Tabs
           defaultValue="existing"
           className="mb-6"
@@ -675,7 +823,7 @@ export default function DateBasedDriverSchedule() {
                     (total, date) => total + date.timeSlots.length,
                     0
                   )}{" "}
-                  timeslots
+                  timeslots across {existingSchedule.length} dates
                 </div>
               </div>
 
@@ -688,47 +836,13 @@ export default function DateBasedDriverSchedule() {
                 </div>
               ) : (
                 sortedExistingSchedule.map((item) => (
-                  <Card key={item.date}>
-                    <CardHeader>
-                      <CardTitle>
-                        {item.date
-                          ? format(
-                              fromUnixTime(item.date),
-                              "EEEE, MMMM d, yyyy"
-                            )
-                          : "Unknown Date"}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {item.timeSlots.map((slot, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 border rounded-md"
-                          >
-                            <div className="flex items-center">
-                              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                              <span>
-                                {formatUnixToTime(slot.start)} -{" "}
-                                {formatUnixToTime(slot.end)}
-                              </span>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                removeExistingTimeSlot(item.date, index)
-                              }
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <DateCard
+                    key={item.date}
+                    date={item.date}
+                    timeSlots={item.timeSlots}
+                    onRemoveTimeSlot={removeExistingTimeSlot}
+                    isExisting={true}
+                  />
                 ))
               )}
             </div>
@@ -744,10 +858,11 @@ export default function DateBasedDriverSchedule() {
                     (total, date) => total + date.timeSlots.length,
                     0
                   )}{" "}
-                  timeslots
+                  timeslots across {newSchedule.length} dates
                 </div>
               </div>
 
+              {/* Date Selection */}
               <div className="mb-6">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -774,10 +889,12 @@ export default function DateBasedDriverSchedule() {
                     <Calendar
                       initialFocus
                       mode="range"
-                      defaultMonth={dateRange?.from}
+                      defaultMonth={tomorrow}
                       selected={dateRange}
                       onSelect={setDateRange}
                       numberOfMonths={2}
+                      disabled={disableDates}
+                      fromDate={tomorrow}
                     />
                   </PopoverContent>
                 </Popover>
@@ -814,140 +931,16 @@ export default function DateBasedDriverSchedule() {
                   )}
 
                   {sortedNewSchedule.map((item) => (
-                    <Card key={item.date}>
-                      <CardHeader>
-                        <CardTitle className="flex justify-between items-center">
-                          <span>
-                            {item.date
-                              ? format(
-                                  fromUnixTime(item.date),
-                                  "EEEE, MMMM d, yyyy"
-                                )
-                              : "Unknown Date"}
-                          </span>
-                          <div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                applyCommonTimeSlotsToDate(item.date)
-                              }
-                              className="mr-2"
-                            >
-                              <Copy className="h-4 w-4 mr-2" /> Apply Common
-                              Slots
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => removeDate(item.date)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {item.timeSlots.map((slot, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center space-x-4"
-                            >
-                              <div className="grid gap-2">
-                                <Label htmlFor={`${item.date}-start-${index}`}>
-                                  Start Time
-                                </Label>
-                                <select
-                                  id={`${item.date}-start-${index}`}
-                                  value={getTimeOffsetFromUnix(slot.start)}
-                                  onChange={(e) =>
-                                    updateTimeSlot(
-                                      item.date,
-                                      index,
-                                      "start",
-                                      Number.parseInt(e.target.value)
-                                    )
-                                  }
-                                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                >
-                                  {TIME_OFFSETS.slice(0, -1).map((offset) => (
-                                    <option key={offset} value={offset}>
-                                      {formatOffsetToTime(offset)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="grid gap-2">
-                                <Label htmlFor={`${item.date}-end-${index}`}>
-                                  End Time
-                                </Label>
-                                <select
-                                  id={`${item.date}-end-${index}`}
-                                  value={getTimeOffsetFromUnix(slot.end)}
-                                  onChange={(e) =>
-                                    updateTimeSlot(
-                                      item.date,
-                                      index,
-                                      "end",
-                                      Number.parseInt(e.target.value)
-                                    )
-                                  }
-                                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                >
-                                  {TIME_OFFSETS.slice(1).map((offset) => (
-                                    <option key={offset} value={offset}>
-                                      {formatOffsetToTime(offset)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => removeTimeSlot(item.date, index)}
-                                className="mt-6"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          {item.timeSlots.map((slot, index) => {
-                            const otherSlots = item.timeSlots.filter(
-                              (_, i) => i !== index
-                            );
-
-                            return (
-                              !isValidTimeSlot(
-                                otherSlots,
-                                slot.start,
-                                slot.end
-                              ) && (
-                                <p
-                                  key={`invalid-${index}`}
-                                  className="text-sm text-red-500 mt-1"
-                                >
-                                  Invalid time slot. Ensure start time is before
-                                  end time and time slots do not overlap.
-                                </p>
-                              )
-                            );
-                          })}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addTimeSlot(item.date)}
-                          className="mt-4"
-                        >
-                          <Plus className="h-4 w-4 mr-2" /> Add Time Slot
-                        </Button>
-                      </CardContent>
-                    </Card>
+                    <DateCard
+                      key={item.date}
+                      date={item.date}
+                      timeSlots={item.timeSlots}
+                      onRemoveTimeSlot={removeTimeSlot}
+                      onAddTimeSlot={addTimeSlot}
+                      onRemoveDate={removeDate}
+                      onApplyCommonSlots={applyCommonTimeSlotsToDate}
+                      onUpdateTimeSlot={updateTimeSlot}
+                    />
                   ))}
                 </>
               )}
@@ -957,6 +950,7 @@ export default function DateBasedDriverSchedule() {
 
         <Separator className="my-6" />
 
+        {/* Submit Button */}
         <div className="flex flex-col space-y-2">
           <div className="flex justify-between items-center mb-2">
             <div>
@@ -975,9 +969,14 @@ export default function DateBasedDriverSchedule() {
               </p>
             </div>
           </div>
-          <Button type="submit" size="lg">
+          <Button type="submit" size="lg" disabled={newSchedule.length === 0}>
             Save Schedule
           </Button>
+          {validationErrors.length > 0 && (
+            <p className="text-sm text-destructive text-center">
+              Please fix all validation errors before saving
+            </p>
+          )}
         </div>
       </form>
     </div>

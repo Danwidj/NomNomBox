@@ -29,7 +29,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader className="py-5 text-center font-bold">
-        NomNomBox Drivers 🚛
+        NomNomGo 🚛
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
