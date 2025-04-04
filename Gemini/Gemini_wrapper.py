@@ -9,9 +9,19 @@ import base64
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+def format_chat_history(chat_history):
+    formatted_history = []
+    for msg in chat_history:
+        if msg.get('type') == 'user':
+            formatted_history.append(f"User: {msg.get('prompt', '')}")
+        elif msg.get('type') == 'model':
+            formatted_history.append(f"Assistant: {msg.get('response', '')}")
+    return "\n".join(formatted_history)
+
 def generate(data):
     try:
         prompt = data['prompt']
+        chat_history = data.get('chat_history', [])
         context_data = {
             'dietary_preferences': data.get('dietary_preferences', []),
             'order_history': data.get('order_history', []),
@@ -34,14 +44,32 @@ def generate(data):
         """.format(json.dumps(context_data))
 
         model = "gemini-2.0-flash-lite-001"
-        contents = [
+        contents = []
+
+        # Add chat history to contents
+        for msg in chat_history:
+            if msg.get('type') == 'user':
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part.from_text(text=msg.get('prompt', ''))]
+                    )
+                )
+            elif msg.get('type') == 'model':
+                contents.append(
+                    types.Content(
+                        role="model",
+                        parts=[types.Part.from_text(text=msg.get('response', ''))]
+                    )
+                )
+
+        # Add current prompt
+        contents.append(
             types.Content(
                 role="user",
-                parts=[
-                    types.Part.from_text(text=prompt)
-                ]
+                parts=[types.Part.from_text(text=prompt)]
             )
-        ]
+        )
 
         generate_content_config = types.GenerateContentConfig(
             temperature = 0.2,

@@ -8,14 +8,7 @@ import logging
 
 # ===== App Configuration =====
 app = Flask(__name__)
-CORS(app, resources={
-    r"/*": {
-        "origins": "*",  # Allow all origins
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Type", "Authorization"]
-    }
-})
+CORS(app)
 
 # ===== Firebase Setup =====
 # Initialize Firebase Admin
