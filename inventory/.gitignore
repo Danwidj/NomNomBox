@@ -8,16 +8,6 @@ inventory-serviceAccountKey.json
 venv/
 env/
 
-# Ignore Firebase credentials (Sensitive file)
-inventory/inventory-serviceAccountKey.json
-
-# Ignore environment files
-inventory/.env
-
-
-# Ignore environment variable files
-.env
-
 # Ignore logs and debug files
 *.log
 debug.log
@@ -38,5 +28,3 @@ yarn.lock
 *.pid
 *.log
 docker-compose.override.yml
-
-serviceAccountKey.json
