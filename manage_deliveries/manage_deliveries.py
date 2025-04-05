@@ -19,6 +19,7 @@ from helper_functions import get_deliveries_by_driver_id, get_orders, update_ord
 import time
 from RabbitMQManager import RabbitMQManager
 from KafkaManager import KafkaManager
+import threading
 # KAFKA_BROKER_URL = "localhost:9092"
 KAFKA_BROKER_URL = "kafka:9092"
 KAFKA_TOPIC = "driver-schedule-updates"
@@ -52,6 +53,86 @@ email = os.getenv("EMAIL")
 password = os.getenv("PASSWORD")
 # logging.info("Firebase API Key: %s", firebase_api_key)
 logging.basicConfig(level=logging.INFO)
+
+
+# Only subscribed to the main queue, and only acknowledge cancelled and esccalated messages
+def deal_with_delivery_status_change(ch, method, properties, body):
+    if method.routing_key == "delivery_cancellation.escalated":
+        # Handle the escalation message
+        logging.info("Received escalation message:", body.decode())
+        # Parse the message
+        message = json.loads(body.decode())
+        delivery_id = message["delivery_id"]
+        try:
+            delivery_response = invoke_http(delivery_URL + "/delivery/" + str(delivery_id), json={ "cancellation_status": "Escalated"}, method='PATCH')
+        except Exception as e:
+            return jsonify({
+                "code": 500,
+                "message": "Failed to update delivery with pending cancellation status",
+                "error": str(e)
+            }), 500
+
+        # Acknowledge the message
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    elif method.routing_key == "delivery_cancellation.success":
+        # update old delivery with status of cancelled
+        logging.info("Received success message:", body.decode())
+        # Parse the message
+        message = json.loads(body.decode())
+        delivery_id = message["delivery_id"]
+        try:
+            delivery_response = invoke_http(delivery_URL + "/delivery/" + str(delivery_id), json={ "cancellation_status": "Cancelled"}, method='PATCH')
+        except Exception as e:
+            logging.error(traceback.format_exc())
+        if delivery_response["code"] not in range(200, 202):
+            logging.error("Failed to update delivery with cancelled status: %s", delivery_response)
+
+
+        # create new delivery with new driver id 
+        new_delivery_details = {
+            "driver_id" : message["reassigned_driver_id"],
+            "location" : message["location"],
+            "order_id" : message["order_id"],
+            "timeslot" : message["timeslot"],
+        }
+        try:
+            new_delivery_response = create_delivery(new_delivery_details)
+        except Exception as e:
+            logging.error(traceback.format_exc())
+        if new_delivery_response["code"] not in range(200, 202):
+            logging.error("Failed to create new delivery: %s", new_delivery_response)
+
+
+        # update order with new delivery id
+        order_id = message["order_id"]
+        new_delivery_id = new_delivery_response["data"]["id"]
+        try:
+            order_response = update_order(order_id=order_id, delivery_id=new_delivery_id)
+        except Exception as e:
+            logging.error(traceback.format_exc())
+        if order_response["code"] not in range(200, 202):
+            logging.error("Failed to update order with new delivery id: %s", order_response)
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+
+
+
+
+def start_consuming():
+    # Start consuming messages from the RabbitMQ queue
+    amqp_lib.start_consuming(
+        hostname="rabbitmq",
+        port=5672,
+        exchange_name="delivery_cancellation_topic",
+        exchange_type="topic",
+        queue_name="delivery_cancellation_queue",
+        callback=deal_with_delivery_status_change)
+
+consumer_thread = threading.Thread(target=start_consuming)
+consumer_thread.daemon = True  
+consumer_thread.start()
 def process_place_delivery_request(delivery_request):
     try:
         #1 get the user info
@@ -332,12 +413,39 @@ def update_delivery_status(delivery_id):
     # {
     #     "order_id": 1,
     #     "status": "Picked up by Driver"
+    #     "timeslot": 1234567890
     # }
     if request.is_json:
         try:
             update_delivery_request = request.get_json()
             order_id = update_delivery_request["order_id"]
             status = update_delivery_request["status"]
+            timeslot = update_delivery_request["timeslot"]
+            
+            # business exception: driver cancels delivery
+            if status == "Pending Cancellation":                
+                # update delivery with delivery exclusive status (all the cancellation related stuff)
+                #request to patch delivery with Pending Cancellation status
+                try:
+                    delivery_response = invoke_http(delivery_URL + "/delivery/" + str(delivery_id), json={ "cancellation_status": "Pending Cancellation"}, method='PATCH')
+                except Exception as e:
+                    return jsonify({
+                        "code": 500,
+                        "message": "Failed to update delivery with pending cancellation status",
+                        "error": str(e)
+                    }), 500
+
+                RabbitMQManager.channel.basic_publish(
+                    exchange="delivery_cancellation_topic",
+                    routing_key="delivery_cancellation.pending",
+                    body=json.dumps(update_delivery_request),
+                    properties=pika.BasicProperties(delivery_mode=2, expiration="10"),
+                )
+                return jsonify({
+                    "code": 200,
+                    "message": "Delivery status updated to pending cancellation"
+                }), 200
+
             # update order with new status
             update_response = update_order(order_id=order_id, delivery_id=delivery_id, status=status)
             logging.info("update_response: %s", update_response)

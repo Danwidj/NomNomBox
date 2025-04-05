@@ -33,14 +33,16 @@ class Delivery(db.Model):
     timeslot = db.Column(db.TIMESTAMP(timezone=True), nullable=False)
     location = db.Column(db.Text, nullable=False)
     driver_id = db.Column(db.Integer, nullable=False)
+    cancellation_status = db.Column(db.String(20), nullable=True) 
 
 
 
-    def __init__(self, order_id, timeslot, location, driver_id):
+    def __init__(self, order_id, timeslot, location, driver_id, cancellation_status=None):
         self.order_id = order_id
         self.timeslot = timeslot
         self.location = location
         self.driver_id = driver_id
+        self.cancellation_status = cancellation_status
 
 
     def json(self):
@@ -50,6 +52,7 @@ class Delivery(db.Model):
             "timeslot": self.timeslot,
             "driver_id": self.driver_id,
             "location": self.location,
+            "cancellation_status": self.cancellation_status
         }
 
 def get_delivery_by_time(start_time, end_time):
@@ -221,6 +224,37 @@ def update_delivery(id):
         )
 
     return jsonify({"code": 200, "data": delivery.json()}), 200
+
+@app.route("/delivery/<int:id>", methods=["PATCH"])
+def patch_delivery(id):
+    delivery = db.session.scalar(db.select(Delivery).filter_by(id=id))
+
+    if not delivery:
+        return jsonify({"code": 404, "message": "Delivery not found."}), 404
+
+    data = request.get_json()
+
+    # Update only the fields that are provided in the request
+    for key, value in data.items():
+        if hasattr(delivery, key):  # Ensure the attribute exists before updating
+            setattr(delivery, key, value)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print("Exception:{}".format(str(e)))
+        return (
+            jsonify(
+                {
+                    "code": 500,
+                    "message": "An error occurred updating the delivery.",
+                }
+            ),
+            500,
+        )
+
+    return jsonify({"code": 200, "data": delivery.json()}), 200
+
 
 
 

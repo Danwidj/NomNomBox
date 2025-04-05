@@ -67,6 +67,11 @@ services:
       dockerfile: dockerfile
     ports:
       - "5000:5000"
+    depends_on:
+      - rabbitmq
+      - rabbitmq_setup
+      - redis
+      - kafka
 
   # driver_frontend:
   #   image: NomNomBox/driver_frontend:latest
@@ -150,6 +155,8 @@ services:
       - "5007:5001"
     depends_on:
       - kafka
+      - rabbitmq
+      - rabbitmq_setup
 
   notifications:
     image: NomNomBox/notifications:latest

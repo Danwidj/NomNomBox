@@ -14,6 +14,8 @@ import traceback
 import redis_utils 
 import logging
 from KafkaManager import KafkaManager
+import amqp_lib
+import requests
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
@@ -112,11 +114,124 @@ def consuming():
             consume(KafkaManager.consumer)
 
 
-        
+
 
 # Start Kafka consumer in a separate thread
 thread = threading.Thread(target=consuming, daemon=True)
 thread.start()
+
+
+def assign_driver_to_timeslot(desired_timeslot):
+    assignable_drivers = db.session.scalars(db.select(Schedule).filter(Schedule.timeslot == desired_timeslot, Schedule.assigned == False)).all()
+    if assignable_drivers == []:
+        raise Exception("No drivers are available for the desired timeslot.")
+    
+    random.shuffle(assignable_drivers)
+    driver_found = False
+    for driver in assignable_drivers:
+        if redis_utils.lock_schedule(driver.id):
+            driver_found = True
+            assigned_driver = driver
+            break
+    
+    
+    if driver_found == False:
+        print("redis lock working")
+        raise Exception("No drivers are available for the desired timeslot.")
+
+        
+
+    # update status of assigned driver
+    assigned_driver.assigned = True
+    try:
+        # commit the changes to the assigned driver to the database
+        db.session.commit()
+        redis_utils.unlock_schedule(assigned_driver.id)
+        return assigned_driver.json()
+    except Exception as e:
+        raise e
+
+
+# Only subscribed to the DLQ, publish to main queue
+
+def find_new_driver(ch, method, properties, body):
+    # message variables: order id, status, timeslot, driver id    
+    message = body.decode()
+    logging.info("Received message from RabbitMQ:", body.decode())
+    data = json.loads(message)
+    
+    timeslot = data["timeslot"]
+    try:
+        # find other drivers that are available for the same timeslot
+        driver_assignment = assign_driver_to_timeslot(timeslot)
+        # if found, remove the availability
+        db.session.query(Schedule).filter(Schedule.timeslot == timeslot, Schedule.driver_id == data["driver_id"] and Schedule.timeslot == data["timeslot"]).delete() 
+        message = {
+            "order_id": data["order_id"],
+            "status": "Cancelled",
+            "reassigned_driver_id": driver_assignment["driver_id"],
+            "timeslot": timeslot,
+            "driver_id": data["driver_id"],
+            "delivery_id": data["delivery_id"],
+
+        }
+        # send message regarding new driver assignment
+        amqp_lib.publish_message(
+            exchange_name="delivery_cancellation_topic",
+            routing_key="delivery_cancellation.success",
+            message=message,
+            properties=properties, 
+        )
+          
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    except Exception as e:
+        # if not found, an exception is raised
+        if (e.message == "No drivers are available for the desired timeslot."):
+            # get time now
+            current_time = datetime.now(timezone.utc)
+            if current_time < timeslot - 24*60*60:
+                #if delivery timeslot is more than 24 hours away, send cancellation back into queue
+                amqp_lib.publish_message(
+                    exchange_name="delivery_cancellation_topic",
+                    routing_key="delivery_cancellation.pending",
+                    message=message,
+                    properties=properties,
+                )
+
+                # every 5 minutes, this message will be sent into the dlq and u will consume it again
+            else:
+                # if delivery timeslot is less than 24 hours away, send back to original queue
+                amqp_lib.publish_message(
+                    exchange_name="delivery_cancellation_topic",
+                    routing_key="delivery_cancellation.escalated",
+                    message=message,
+                    properties=properties,
+                )
+                
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+        
+        
+  
+
+
+        else:
+            logging.error("Exception:{}".format(str(e)))
+            return
+
+
+def amqp_start_consuming():
+    amqp_lib.start_consuming(
+        hostname="rabbitmq",
+        port=5672,
+        exchange_name="delivery_cancellation_topic",
+        exchange_type="topic",
+        queue_name="dlq",
+        callback=find_new_driver)
+    
+thread = threading.Thread(target=amqp_start_consuming, daemon=True)
+thread.start()
+
+
 
 @app.route("/schedule", methods=["POST"])
 def create_timeslot_assignment():
@@ -133,61 +248,30 @@ def create_timeslot_assignment():
     # passed time is seconds since epoch. convert to milliseconds for conversion to work properly
     desired_timeslot = datetime.fromtimestamp(int(desired_timeslot), timezone.utc)
     print(desired_timeslot)
-    assignable_drivers = db.session.scalars(db.select(Schedule).filter(Schedule.timeslot == desired_timeslot, Schedule.assigned == False)).all()
-    if assignable_drivers == []:
-        return (
-            jsonify(
+    try:
+        assigned_driver = assign_driver_to_timeslot(desired_timeslot)
+   
+    except Exception as e:
+        if (e.message == "No drivers are available for the desired timeslot."):
+            return jsonify(
                 {
                     "code": 404,
                     "message": "No drivers are available for the desired timeslot.",
-                    "desired_timeslot": desired_timeslot
                 }
-            ),
-            404
-        )
+            ), 404
+        else:
+            logging.error("Exception:{}".format(str(e)))
+            return (
+                jsonify(
+                    {
+                        "code": 500,
+                        "message": "An error occurred updating the schedule.",
+                    }
+                ),
+                500,
+            )
     
-    random.shuffle(assignable_drivers)
-    driver_found = False
-    for driver in assignable_drivers:
-        if redis_utils.lock_schedule(driver.id):
-            driver_found = True
-            assigned_driver = driver
-            break
-    
-    
-    if driver_found == False:
-        print("redis lock working")
-        return (
-            jsonify(
-                {
-                    "code": 404,
-                    "message": "No drivers are available for the desired timeslot. Redis lock is working as intended.",
-                }
-            ),
-            404
-        )
-        
-
-    # update status of assigned driver
-    assigned_driver.assigned = True
-    try:
-        # commit the changes to the assigned driver to the database
-        db.session.commit()
-        redis_utils.unlock_schedule(assigned_driver.id)
-    except Exception as e:
-        print("Exception:{}".format(str(e)))
-        return (
-            jsonify(
-                {
-                    "code": 500,
-                    "message": "An error occurred updating the schedule.",
-                }
-            ),
-            500,
-        )
-
-    
-    return jsonify({"code": 201, "data": assigned_driver.json()}), 201
+    return jsonify({"code": 201, "data": assigned_driver}), 201
 
 
 @app.route("/available_slots", methods=["GET"])

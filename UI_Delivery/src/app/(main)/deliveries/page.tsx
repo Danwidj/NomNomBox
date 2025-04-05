@@ -11,15 +11,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, MapPin, Search, Truck, Calendar } from "lucide-react";
+import {
+  Clock,
+  MapPin,
+  Search,
+  Truck,
+  Calendar,
+  AlertCircle,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// Define delivery status types
+// Update delivery status types to include cancellation states
 type DeliveryStatus =
   | "Assigned To Driver"
   | "Picked up by Driver"
   | "Delivered by Driver"
-  | "Received by Customer";
+  | "Received by Customer"
+  | "Pending Cancellation"
+  | "Cancelled"
+  | "Escalated";
 
 // Define delivery interface
 interface Delivery {
@@ -28,7 +38,7 @@ interface Delivery {
   timeslot: number; // Unix timestamp
   location: string;
   status: DeliveryStatus;
-  delivery_id: string;
+  delivery_id: number;
 }
 
 export default function DeliveryList() {
@@ -52,7 +62,9 @@ export default function DeliveryList() {
           return;
         }
         // Fetch deliveries from the API
-        const response = await fetch(`http://localhost:5000/deliveries?driver_id=${driver_id}`);
+        const response = await fetch(
+          `http://localhost:5000/deliveries?driver_id=${driver_id}`
+        );
         // add the portion below for JWT auth:
         // , {
         //   headers: {
@@ -64,42 +76,9 @@ export default function DeliveryList() {
         const jsonResponse = await response.json();
         const data = jsonResponse.data;
 
-        // All deliveries initially have "Assigned to Driver" status
-        // const formattedDeliveries = data.map((delivery: Delivery) => ({
-        //   ...delivery,
-        //   // status: "Assigned to Driver" as DeliveryStatus,
-        // }));
-
         setDeliveries(data);
       } catch (error) {
         console.error("Error fetching deliveries:", error);
-        // Fallback to sample data for demo purposes
-        // setDeliveries([
-        //   {
-        //     order_id: "ORD-1001",
-        //     delivery_id: "DEL-1001",
-        //     driver_id: "DRV-001",
-        //     timeslot: 1678886400,
-        //     location: "123 Main St, Anytown, CA 94123",
-        //     status: "Assigned to Driver",
-        //   },
-        //   {
-        //     order_id: "ORD-1002",
-        //     delivery_id: "DEL-1002",
-        //     driver_id: "DRV-001",
-        //     timeslot: 1678890000,
-        //     location: "456 Oak Ave, Somewhere, CA 94124",
-        //     status: "Assigned to Driver",
-        //   },
-        //   {
-        //     order_id: "ORD-1003",
-        //     delivery_id: "DEL-1003",
-        //     driver_id: "DRV-001",
-        //     timeslot: 1678893600,
-        //     location: "789 Pine Rd, Nowhere, CA 94125",
-        //     status: "Assigned to Driver",
-        //   },
-        // ]);
       } finally {
         setIsLoading(false);
       }
@@ -136,9 +115,11 @@ export default function DeliveryList() {
 
   // Update delivery status
   const updateDeliveryStatus = async (
-    delivery_id: string,
+    delivery_id: number,
     newStatus: DeliveryStatus,
-    order_id: string
+    order_id: string,
+    timeslot: number,
+    location: string
   ) => {
     try {
       // Update locally first for immediate UI feedback
@@ -159,12 +140,37 @@ export default function DeliveryList() {
         body: JSON.stringify({
           order_id: order_id,
           status: newStatus,
+          timeslot: timeslot,
+          delivery_id: delivery_id,
+          location: location,
         }),
       });
     } catch (error) {
       console.error("Error updating delivery status:", error);
       // Revert on error
       alert("Failed to update delivery status. Please try again.");
+    }
+  };
+
+  // Request cancellation - only available for deliveries in "Assigned To Driver" status
+  const requestCancellation = async (
+    delivery_id: number,
+    order_id: string,
+    timeslot: number,
+    location: string
+  ) => {
+    try {
+      // Update status to "Pending Cancellation"
+      await updateDeliveryStatus(
+        delivery_id,
+        "Pending Cancellation",
+        order_id,
+        timeslot,
+        location
+      );
+    } catch (error) {
+      console.error("Error requesting cancellation:", error);
+      alert("Failed to request cancellation. Please try again.");
     }
   };
 
@@ -236,6 +242,33 @@ export default function DeliveryList() {
             Received
           </Badge>
         );
+      case "Pending Cancellation":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-orange-50 text-orange-700 border-orange-200"
+          >
+            Pending Cancel
+          </Badge>
+        );
+      case "Cancelled":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200"
+          >
+            Cancelled
+          </Badge>
+        );
+      case "Escalated":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-rose-50 text-rose-700 border-rose-200"
+          >
+            Escalated
+          </Badge>
+        );
     }
   };
 
@@ -271,12 +304,15 @@ export default function DeliveryList() {
       </div>
 
       <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 mb-4">
+        <TabsList className="grid grid-cols-8 mb-4">
           <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="Assigned to Driver">Assigned</TabsTrigger>
+          <TabsTrigger value="Assigned To Driver">Assigned</TabsTrigger>
           <TabsTrigger value="Picked up by Driver">Picked Up</TabsTrigger>
           <TabsTrigger value="Delivered by Driver">Delivered</TabsTrigger>
           <TabsTrigger value="Received by Customer">Received</TabsTrigger>
+          <TabsTrigger value="Pending Cancellation">Pending Cancel</TabsTrigger>
+          <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
+          <TabsTrigger value="Escalated">Escalated</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-0">
@@ -310,28 +346,76 @@ export default function DeliveryList() {
                             {delivery.location}
                           </span>
                         </div>
+                        {delivery.status === "Pending Cancellation" && (
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 mt-1 text-orange-500" />
+                            <span className="text-sm text-orange-500">
+                              Cancellation requested - awaiting approval
+                            </span>
+                          </div>
+                        )}
+                        {delivery.status === "Cancelled" && (
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 mt-1 text-red-500" />
+                            <span className="text-sm text-red-500">
+                              This delivery has been cancelled
+                            </span>
+                          </div>
+                        )}
+                        {delivery.status === "Escalated" && (
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 mt-1 text-rose-500" />
+                            <span className="text-sm text-rose-500">
+                              This delivery has been escalated for review
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                     <CardFooter className="flex flex-wrap gap-2 pt-0">
-                      {getNextStatus(delivery.status) && (
+                      {/* Show regular status update button if not cancelled or pending cancellation */}
+                      {getNextStatus(delivery.status) &&
+                        delivery.status !== "Pending Cancellation" &&
+                        delivery.status !== "Cancelled" && (
+                          <Button
+                            size="sm"
+                            className="bg-primary hover:bg-primary/90"
+                            onClick={() =>
+                              updateDeliveryStatus(
+                                delivery.delivery_id,
+                                getNextStatus(delivery.status)!,
+                                delivery.order_id,
+                                delivery.timeslot,
+                                delivery.location
+                              )
+                            }
+                          >
+                            <Truck className="mr-1 h-4 w-4" />
+                            {delivery.status === "Assigned To Driver" &&
+                              "Pick Up"}
+                            {delivery.status === "Picked up by Driver" &&
+                              "Mark Delivered"}
+                            {delivery.status === "Delivered by Driver" &&
+                              "Confirm Receipt"}
+                          </Button>
+                        )}
+
+                      {/* Show cancellation request button only for assigned deliveries */}
+                      {delivery.status === "Assigned To Driver" && (
                         <Button
                           size="sm"
-                          className="bg-primary hover:bg-primary/90"
+                          variant="outline"
+                          className="border-red-200 text-red-700 hover:bg-red-50"
                           onClick={() =>
-                            updateDeliveryStatus(
+                            requestCancellation(
                               delivery.delivery_id,
-                              getNextStatus(delivery.status)!,
-                              delivery.order_id
+                              delivery.order_id,
+                              delivery.timeslot
                             )
                           }
                         >
-                          <Truck className="mr-1 h-4 w-4" />
-                          {delivery.status === "Assigned To Driver" &&
-                            "Pick Up"}
-                          {delivery.status === "Picked up by Driver" &&
-                            "Mark Delivered"}
-                          {delivery.status === "Delivered by Driver" &&
-                            "Confirm Receipt"}
+                          <AlertCircle className="mr-1 h-4 w-4" />
+                          Request Cancellation
                         </Button>
                       )}
                     </CardFooter>

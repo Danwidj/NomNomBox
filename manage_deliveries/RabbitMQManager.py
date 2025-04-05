@@ -1,4 +1,5 @@
 import amqp_lib
+import pika
 class RabbitMQManager:
     connection = None
     channel = None
@@ -17,6 +18,9 @@ class RabbitMQManager:
         except Exception as exception:
             print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
             exit(1) # terminate
+
+
+
 
 
     

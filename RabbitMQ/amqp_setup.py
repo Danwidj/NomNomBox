@@ -39,9 +39,9 @@ def create_exchange(hostname, port, exchange_name, exchange_type):
     return channel
 
 
-def create_queue(channel, exchange_name, queue_name, routing_key):
+def create_queue(channel, exchange_name, queue_name, routing_key, args=None):
     print(f"Bind to queue: {queue_name}")
-    channel.queue_declare(queue=queue_name, durable=True)
+    channel.queue_declare(queue=queue_name, durable=True, arguments=args)
     # 'durable' makes the queue survive broker restarts
 
     # bind the queue to the exchange via the routing_key
@@ -49,15 +49,28 @@ def create_queue(channel, exchange_name, queue_name, routing_key):
         exchange=exchange_name, queue=queue_name, routing_key=routing_key
     )
 
-
+dlq_args={
+    "x-dead-letter-exchange": "delivery_cancellation_topic",
+    "x-dead-letter-routing-key": "dlq",
+    "x-message-ttl": 300000,
+}
 while True:
     try:
+        # notification exchange
         channel = create_exchange(
             hostname=amqp_host,
             port=amqp_port,
             exchange_name=exchange_name,
             exchange_type=exchange_type,
         )
+
+        channel = create_exchange(
+            hostname=amqp_host,
+            port=amqp_port,
+            exchange_name="delivery_cancellation_topic",
+            exchange_type="topic",
+        )
+
 
         # Both order payment success and delivery notifications will use the same queue
         create_queue(
@@ -71,6 +84,22 @@ while True:
             exchange_name=exchange_name,
             queue_name="notification_queue",
             routing_key="delivery.*", # change to notification.email if you want to test notification_service.py
+        )
+
+        # FOR DELIVERY CANCELLATION
+        create_queue(
+            channel=channel,
+            exchange_name="delivery_cancellation_topic",
+            queue_name="delivery_cancellation_queue",
+            routing_key="deliverycancellation.*",
+            args=dlq_args,
+        )
+        
+        create_queue(
+            channel=channel,
+            exchange_name="delivery_cancellation_topic",
+            queue_name="dlq",
+            routing_key="dlq",
         )
 
         break
