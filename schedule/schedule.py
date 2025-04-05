@@ -160,63 +160,65 @@ def find_new_driver(ch, method, properties, body):
     logging.info("Received message from RabbitMQ:", body.decode())
     data = json.loads(message)
     
-    timeslot = data["timeslot"]
-    try:
-        # find other drivers that are available for the same timeslot
-        driver_assignment = assign_driver_to_timeslot(timeslot)
-        # if found, remove the availability
-        db.session.query(Schedule).filter(Schedule.timeslot == timeslot, Schedule.driver_id == data["driver_id"] and Schedule.timeslot == data["timeslot"]).delete() 
-        message = {
-            "order_id": data["order_id"],
-            "status": "Cancelled",
-            "reassigned_driver_id": driver_assignment["driver_id"],
-            "timeslot": timeslot,
-            "driver_id": data["driver_id"],
-            "delivery_id": data["delivery_id"],
+    with app.app_context():
+        try:
+            timeslot = data["timeslot"]
+            # find other drivers that are available for the same timeslot
+            driver_assignment = assign_driver_to_timeslot(timeslot)
+            # if found, remove the availability
+            timeslot = datetime.fromtimestamp(int(timeslot), timezone.utc)
+            db.session.query(Schedule).filter(Schedule.timeslot == timeslot, Schedule.driver_id == data["driver_id"] and Schedule.timeslot == timeslot).delete() 
+            message = {
+                "order_id": data["order_id"],
+                "status": "Cancelled",
+                "reassigned_driver_id": driver_assignment["driver_id"],
+                "timeslot": timeslot,
+                "driver_id": data["driver_id"],
+                "delivery_id": data["delivery_id"],
 
-        }
-        # send message regarding new driver assignment
-        amqp_lib.publish_message(
-            exchange_name="delivery_cancellation_topic",
-            routing_key="delivery_cancellation.success",
-            message=message,
-            properties=properties, 
-        )
-          
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as e:
-        # if not found, an exception is raised
-        if (e.message == "No drivers are available for the desired timeslot."):
-            # get time now
-            current_time = datetime.now(timezone.utc)
-            if current_time < timeslot - 24*60*60:
-                #if delivery timeslot is more than 24 hours away, send cancellation back into queue
-                amqp_lib.publish_message(
-                    exchange_name="delivery_cancellation_topic",
-                    routing_key="delivery_cancellation.pending",
-                    message=message,
-                    properties=properties,
-                )
-
-                # every 5 minutes, this message will be sent into the dlq and u will consume it again
-            else:
-                # if delivery timeslot is less than 24 hours away, send back to original queue
-                amqp_lib.publish_message(
-                    exchange_name="delivery_cancellation_topic",
-                    routing_key="delivery_cancellation.escalated",
-                    message=message,
-                    properties=properties,
-                )
-                
+            }
+            # send message regarding new driver assignment
+            amqp_lib.publish_message(
+                exchange_name="delivery_cancellation_topic",
+                routing_key="delivery_cancellation.success",
+                message=message,
+                properties=properties, 
+            )
+            
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        
-        
-  
+        except Exception as e:
+            # if not found, an exception is raised
+            if (str(e) == "No drivers are available for the desired timeslot."):
+                # get time now
+                current_time = datetime.now(timezone.utc)
+                if current_time < timeslot - 24*60*60:
+                    #if delivery timeslot is more than 24 hours away, send cancellation back into queue
+                    amqp_lib.publish_message(
+                        exchange_name="delivery_cancellation_topic",
+                        routing_key="delivery_cancellation.pending",
+                        message=message,
+                        properties=properties,
+                    )
+
+                    # every 5 minutes, this message will be sent into the dlq and u will consume it again
+                else:
+                    # if delivery timeslot is less than 24 hours away, send back to original queue
+                    amqp_lib.publish_message(
+                        exchange_name="delivery_cancellation_topic",
+                        routing_key="delivery_cancellation.escalated",
+                        message=message,
+                        properties=properties,
+                    )
+                    
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+            
+            
+    
 
 
-        else:
-            logging.error("Exception:{}".format(str(e)))
-            return
+            else:
+                logging.error("Exception:{}".format(str(e)))
+                return
 
 
 def amqp_start_consuming():
@@ -252,7 +254,7 @@ def create_timeslot_assignment():
         assigned_driver = assign_driver_to_timeslot(desired_timeslot)
    
     except Exception as e:
-        if (e.message == "No drivers are available for the desired timeslot."):
+        if (str(e) == "No drivers are available for the desired timeslot."):
             return jsonify(
                 {
                     "code": 404,

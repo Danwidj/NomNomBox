@@ -91,7 +91,7 @@ while True:
             channel=channel,
             exchange_name="delivery_cancellation_topic",
             queue_name="delivery_cancellation_queue",
-            routing_key="deliverycancellation.*",
+            routing_key="delivery_cancellation.*",
             args=dlq_args,
         )
         

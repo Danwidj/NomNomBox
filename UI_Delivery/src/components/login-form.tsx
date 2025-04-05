@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -22,7 +22,7 @@ export function LoginForm({
 
     try {
       const response = await fetch(
-        `${BASE_API_URL}/login`,
+        `https://personal-6fbyxkeb.outsystemscloud.com/DriverService/rest/v1/drivers/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -50,24 +50,34 @@ export function LoginForm({
   };
 
   return (
-    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleLogin}{...props}>
+    <form
+      className={cn("flex flex-col gap-6", className)}
+      onSubmit={handleLogin}
+      {...props}
+    >
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Welcome Back</h1>
         <p className="text-balance text-sm text-muted-foreground">
-        Login to your NomNomGo account
+          Login to your NomNomGo account
         </p>
       </div>
       <div className="grid gap-6">
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="example@gmail.com" value={email}
-            onChange={(e) => setEmail(e.target.value)}required />
+          <Input
+            id="email"
+            type="email"
+            placeholder="example@gmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
         <div className="grid gap-2">
           <div className="flex items-center">
             <Label htmlFor="password">Password</Label>
           </div>
-            <Input
+          <Input
             id="password"
             type="password"
             value={password}
@@ -80,5 +90,5 @@ export function LoginForm({
         </Button>
       </div>
     </form>
-  )
+  );
 }

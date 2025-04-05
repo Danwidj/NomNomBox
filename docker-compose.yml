@@ -95,7 +95,7 @@ services:
       context: ./delivery
       dockerfile: Dockerfile
     ports:
-      - "5002:5000"
+      - "5010:5000"
 
   # Add the UI_customer service
   customer_frontend:
