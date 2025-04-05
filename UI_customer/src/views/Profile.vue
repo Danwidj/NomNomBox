@@ -399,31 +399,60 @@ export default {
     
     const fetchUserData = async (customerId, token) => {
       try {
+        // First, check if token exists
+        if (!token) {
+          console.error('No authentication token found');
+          router.push('/login');
+          return;
+        }
+      
+        // Try to fetch user data
         const response = await fetch(`http://localhost:5003/customer/${customerId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-        })
+        });
+      
+        const data = await response.json();
+        console.log('Customer API Response:', data);
+      
+        // Handle 401 Unauthorized errors specifically
+        if (data.code === 401) {
+          console.error('Authentication error:', data.message);
 
-        const data = await response.json()
-        console.log('Customer API Response:', data)
+          // If it's a token timing issue
+          if (data.error && data.error.includes('Token used too early')) {
+            // Wait a few seconds and try again
+            console.log('Token timing issue detected. Retrying in 3 seconds...');
+            setTimeout(async () => {
+              await fetchUserData(customerId, token);
+            }, 3000);
+            return;
+          }
 
+          // For other auth errors, redirect to login
+          alert('Your session has expired. Please log in again.');
+          localStorage.removeItem('token');
+          router.push('/login');
+          return;
+        }
+      
         if (data.code === 200) {
-          customer.value = data.data
-          
+          customer.value = data.data;
+
           // Ensure dietary_preferences is an array
           if (!Array.isArray(customer.value.dietary_preferences)) {
-            customer.value.dietary_preferences = []
+            customer.value.dietary_preferences = [];
           }
-          
-          console.log('Customer Data Loaded:', customer.value)
+
+          console.log('Customer Data Loaded:', customer.value);
         } else {
-          console.error('Failed to fetch customer data:', data.message)
+          console.error('Failed to fetch customer data:', data.message);
         }
       } catch (error) {
-        console.error('Error fetching customer data:', error)
+        console.error('Error fetching customer data:', error);
       }
     }
 
