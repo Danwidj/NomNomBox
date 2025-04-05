@@ -80,7 +80,19 @@ def process_message(ch, method, properties, body):
             # Get user email
 
             subject = f"Payment Successful - Order #{order_id}"
-            body_text = f"Dear Customer,\n\nWe're happy to let you know that your payment for Order #{order_id} was successful!\nYou will receive another email for your delivery.\n\nThank you for choosing NomNomBox 🥡"
+            body_text = f"""
+  🎉 Your Meal Kit Order #{order_id} is Confirmed! 🎉
+
+  Woohoo! 🥳 We're absolutely thrilled to let you know that your payment was successful! 💳✅
+
+  Thank you so much for choosing NomNomBox! 💖 We're already busy whipping up your delicious meal kit with love and the freshest ingredients. 🥦🥕🍅 We'll keep you updated every step of the way, so you know exactly when to expect your yummy delivery! 🚚💨
+
+  Get ready to say NomNom! 😋🍴
+
+  Sending you our warmest wishes,
+
+  The NomNomBox Team 💌
+  """
 
             if not customer_email:
                 print(f"No email address found for customer_id. Skipping.")
@@ -104,7 +116,21 @@ def process_message(ch, method, properties, body):
             order_id = data.get("order_id")  #order_id - ADDED THE COMMPOSITE!!
 
             subject = f"Delivery Status Update - Delivery #{order_id}"
-            body_text = f"Dear Customer,\n\nYour delivery for #{order_id} status has been updated to {status}. \nThank you for your order!\n"
+            body_text = f"""
+  👋 Dear Customer,
+
+  🚚 Exciting news! Your delivery for order #{order_id} has been updated!
+
+  The current status is: {status} 🎉
+
+  We're working hard to get your delicious meal kit to you as quickly as possible. We'll keep you posted on any further updates.
+
+  Thank you for your order! 💖
+
+  Warm regards,
+
+  The NomNomBox Team 📦
+  """
             # template = string.Template(DELIVERY_PICKEDUP_TEMPLATE) # set template
             # body_text = template.substitute(delivery_id=delivery_id,status=status)
 

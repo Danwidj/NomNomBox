@@ -163,14 +163,15 @@ services:
     build:
       context: ./notifications
       dockerfile: Dockerfile
-    ports:
-      - "9000:9000"
     environment:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+      - RABBITMQ_EXCHANGE=notification_topic
+      - NOTIFICATIONS_QUEUE=notification_queue
     depends_on:
       - rabbitmq
       - rabbitmq_setup
+    command: python notifications_consumer.py
 
   api-docs:
     image: NomNomBox/api-docs:latest
@@ -211,20 +212,20 @@ services:
       - inventory
       - chathistory
 
-  notifications_consumer:
-    image: NomNomBox/notifications:latest
-    build:
-      context: ./notifications
-      dockerfile: Dockerfile
-    environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_EXCHANGE=notification_topic
-      - NOTIFICATIONS_QUEUE=notification_queue
-    depends_on:
-      - rabbitmq
-      - rabbitmq_setup
-    command: python notifications_consumer.py
+  # notifications_consumer:
+  #   image: NomNomBox/notifications:latest
+  #   build:
+  #     context: ./notifications
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     - RABBITMQ_HOST=rabbitmq
+  #     - RABBITMQ_PORT=5672
+  #     - RABBITMQ_EXCHANGE=notification_topic
+  #     - NOTIFICATIONS_QUEUE=notification_queue
+  #   depends_on:
+  #     - rabbitmq
+  #     - rabbitmq_setup
+  #   command: python notifications_consumer.py
 
 networks:
   default:
