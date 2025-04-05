@@ -27,7 +27,22 @@ def get_specification():
                     'summary': 'Get inventory',
                     'description': 'Fetch inventory data from the Inventory Microservice',
                     'responses': {
-                        '200': success_response('Inventory data retrieved successfully'),
+                        '200': success_response(
+                            'Inventory data retrieved successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'object',
+                                        'description': 'Inventory data from inventory service'
+                                    }
+                                }
+                            }
+                        ),
                         '500': error_response('Error fetching inventory')
                     }
                 })
@@ -72,6 +87,14 @@ def get_specification():
                             {
                                 'type': 'object',
                                 'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 201
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Order placed successfully'
+                                    },
                                     'orderId': {
                                         'type': 'string',
                                         'description': 'Created order ID'
@@ -112,7 +135,22 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '200': success_response('Order updated as paid'),
+                        '200': success_response(
+                            'Order updated as paid',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Order updated as paid'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Missing required fields'),
                         '500': error_response('Error updating order')
                     }
@@ -139,9 +177,53 @@ def get_specification():
                             {
                                 'type': 'object',
                                 'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
                                     'data': {
                                         'type': 'object',
-                                        'description': 'Order details'
+                                        'description': 'Order details',
+                                        'properties': {
+                                            'orderId': {
+                                                'type': 'string',
+                                                'description': 'Order ID'
+                                            },
+                                            'customerId': {
+                                                'type': 'string',
+                                                'description': 'Customer ID'
+                                            },
+                                            'items': {
+                                                'type': 'array',
+                                                'description': 'List of items in the order',
+                                                'items': {
+                                                    'type': 'object'
+                                                }
+                                            },
+                                            'totalPrice': {
+                                                'type': 'number',
+                                                'description': 'Total price of the order'
+                                            },
+                                            'status': {
+                                                'type': 'string',
+                                                'description': 'Order status'
+                                            },
+                                            'paymentIntentId': {
+                                                'type': 'string',
+                                                'description': 'Payment intent ID',
+                                                'nullable': True
+                                            },
+                                            'createdAt': {
+                                                'type': 'string',
+                                                'format': 'date-time',
+                                                'description': 'Creation timestamp'
+                                            },
+                                            'updatedAt': {
+                                                'type': 'string',
+                                                'format': 'date-time',
+                                                'description': 'Last update timestamp'
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -176,7 +258,26 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '201': success_response('Order updated successfully'),
+                        '201': success_response(
+                            'Order updated successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 201
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Order updated successfully'
+                                    },
+                                    'orderId': {
+                                        'type': 'string',
+                                        'description': 'Updated order ID'
+                                    }
+                                }
+                            }
+                        ),
                         '404': error_response('Order not found'),
                         '500': error_response('Error updating order')
                     }
@@ -212,17 +313,31 @@ def get_specification():
                         '200': success_response(
                             'Orders retrieved successfully',
                             {
-                                'type': 'array',
-                                'items': {
-                                    'type': 'object',
-                                    'properties': {
-                                        'order_id': {
-                                            'type': 'string',
-                                            'description': 'Order ID'
-                                        },
-                                        'data': {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'array',
+                                        'items': {
                                             'type': 'object',
-                                            'description': 'Order details'
+                                            'properties': {
+                                                'order_id': {
+                                                    'type': 'string',
+                                                    'description': 'Order ID'
+                                                },
+                                                'data': {
+                                                    'type': 'object',
+                                                    'description': 'Order details'
+                                                },
+                                                'error': {
+                                                    'type': 'string',
+                                                    'description': 'Error message if order not found',
+                                                    'nullable': True
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -266,7 +381,26 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '200': success_response('Order status updated successfully'),
+                        '200': success_response(
+                            'Order status updated successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Order status updated successfully'
+                                    },
+                                    'orderId': {
+                                        'type': 'string',
+                                        'description': 'Updated order ID'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Missing status field'),
                         '404': error_response('Order not found'),
                         '500': error_response('Error updating order status')
@@ -292,10 +426,19 @@ def get_specification():
                         '200': success_response(
                             'Orders retrieved successfully',
                             {
-                                'type': 'array',
-                                'items': {
-                                    'type': 'object',
-                                    'description': 'Order details'
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'array',
+                                        'items': {
+                                            'type': 'object',
+                                            'description': 'Order details'
+                                        }
+                                    }
                                 }
                             }
                         ),
@@ -326,4 +469,4 @@ def get_specification():
                 })
             ])
         }
-    } 
+    }

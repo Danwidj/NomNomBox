@@ -74,6 +74,14 @@ def get_specification():
                             {
                                 'type': 'object',
                                 'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 201
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Checkout session created'
+                                    },
                                     'sessionId': {
                                         'type': 'string',
                                         'description': 'Stripe Checkout session ID'
@@ -81,8 +89,38 @@ def get_specification():
                                 }
                             }
                         ),
-                        '400': error_response('Missing required fields'),
-                        '500': error_response('Error creating payment session')
+                        '400': error_response(
+                            'Missing required fields',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 400
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Missing required fields'
+                                    }
+                                }
+                            }
+                        ),
+                        '500': error_response(
+                            'Error creating payment session',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 500
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Error creating payment session: {error details}'
+                                    }
+                                }
+                            }
+                        )
                     }
                 })
             ]),
@@ -105,7 +143,18 @@ def get_specification():
                                 }
                             }
                         ),
-                        '500': error_response('Stripe public key is missing')
+                        '500': error_response(
+                            'Stripe public key is missing',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'error': {
+                                        'type': 'string',
+                                        'example': 'Stripe public key is missing'
+                                    }
+                                }
+                            }
+                        )
                     }
                 })
             ]),
@@ -132,7 +181,7 @@ def get_specification():
                                 'properties': {
                                     'status': {
                                         'type': 'string',
-                                        'description': 'Payment status (complete)',
+                                        'description': 'Payment status',
                                         'enum': ['complete']
                                     },
                                     'orderId': {
@@ -142,10 +191,42 @@ def get_specification():
                                 }
                             }
                         ),
-                        '400': error_response('Missing session_id or payment not completed'),
-                        '500': error_response('Error fetching payment status')
+                        '400': error_response(
+                            'Missing session_id or payment not completed',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'error': {
+                                        'type': 'string',
+                                        'example': 'Missing session_id'
+                                    },
+                                    'status': {
+                                        'type': 'string',
+                                        'description': 'Current payment status',
+                                        'nullable': True
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Payment not completed',
+                                        'nullable': True
+                                    }
+                                }
+                            }
+                        ),
+                        '500': error_response(
+                            'Error fetching payment status',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'error': {
+                                        'type': 'string',
+                                        'example': 'Error fetching payment status: {error details}'
+                                    }
+                                }
+                            }
+                        )
                     }
                 })
             ])
         }
-    } 
+    }

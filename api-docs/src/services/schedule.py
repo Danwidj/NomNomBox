@@ -49,28 +49,86 @@ def get_specification():
                             {
                                 'type': 'object',
                                 'properties': {
-                                    'id': {
+                                    'code': {
                                         'type': 'integer',
-                                        'description': 'Schedule ID'
+                                        'example': 201
                                     },
-                                    'driver_id': {
-                                        'type': 'integer',
-                                        'description': 'Assigned driver ID'
-                                    },
-                                    'timeslot': {
-                                        'type': 'integer',
-                                        'description': 'Assigned timeslot (Unix timestamp)'
-                                    },
-                                    'assigned': {
-                                        'type': 'boolean',
-                                        'description': 'Assignment status'
+                                    'data': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'id': {
+                                                'type': 'integer',
+                                                'description': 'Schedule ID'
+                                            },
+                                            'driver_id': {
+                                                'type': 'integer',
+                                                'description': 'Assigned driver ID'
+                                            },
+                                            'timeslot': {
+                                                'type': 'integer',
+                                                'description': 'Assigned timeslot (Unix timestamp)'
+                                            },
+                                            'assigned': {
+                                                'type': 'boolean',
+                                                'description': 'Assignment status'
+                                            }
+                                        }
                                     }
                                 }
                             }
                         ),
-                        '400': error_response('Invalid JSON format in the request'),
-                        '404': error_response('No drivers available for the desired timeslot'),
-                        '500': error_response('Error updating the schedule')
+                        '400': error_response(
+                            'Invalid JSON format in the request',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 400
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Invalid JSON format in the request.'
+                                    },
+                                    'request': {
+                                        'type': 'string',
+                                        'description': 'The invalid request data'
+                                    }
+                                }
+                            }
+                        ),
+                        '404': error_response(
+                            'No drivers available for the desired timeslot',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 404
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'No drivers are available for the desired timeslot.'
+                                    }
+                                }
+                            }
+                        ),
+                        '500': error_response(
+                            'Error updating the schedule',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 500
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'An error occurred updating the schedule.'
+                                    }
+                                }
+                            }
+                        )
                     }
                 })
             ]),
@@ -100,15 +158,54 @@ def get_specification():
                         '200': success_response(
                             'Available slots retrieved successfully',
                             {
-                                'type': 'array',
-                                'items': {
-                                    'type': 'integer',
-                                    'description': 'Available timeslot (Unix timestamp)'
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'array',
+                                        'items': {
+                                            'type': 'integer',
+                                            'description': 'Available timeslot (Unix timestamp)'
+                                        }
+                                    }
                                 }
                             }
                         ),
-                        '400': error_response('Missing start or end timestamp'),
-                        '500': error_response('Error retrieving available slots')
+                        '400': error_response(
+                            'Missing start or end timestamp',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 400
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Missing start or end timestamp'
+                                    }
+                                }
+                            }
+                        ),
+                        '500': error_response(
+                            'Error retrieving available slots',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 500
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Error retrieving available slots: {error details}'
+                                    }
+                                }
+                            }
+                        )
                     }
                 })
             ]),
@@ -138,4 +235,4 @@ def get_specification():
                 })
             ])
         }
-    } 
+    }

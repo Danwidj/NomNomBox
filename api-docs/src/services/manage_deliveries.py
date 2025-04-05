@@ -38,7 +38,18 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '200': success_response('Message sent successfully'),
+                        '200': success_response(
+                            'Message sent successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Message sent'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Invalid message format'),
                         '500': error_response('Internal server error')
                     }
@@ -86,7 +97,22 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '200': success_response('Driver availability updated successfully'),
+                        '200': success_response(
+                            'Driver availability updated successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'results': {
+                                        'type': 'object',
+                                        'description': 'Results from updating driver availability'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Invalid request or driver has existing deliveries'),
                         '500': error_response('Internal server error')
                     }
@@ -130,13 +156,26 @@ def get_specification():
                             {
                                 'type': 'object',
                                 'properties': {
-                                    'deliveryId': {
-                                        'type': 'string',
-                                        'description': 'Assigned delivery ID'
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
                                     },
-                                    'driverId': {
+                                    'message': {
                                         'type': 'string',
-                                        'description': 'Assigned driver ID'
+                                        'example': 'Delivery request placed successfully'
+                                    },
+                                    'data': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'deliveryId': {
+                                                'type': 'integer',
+                                                'description': 'Assigned delivery ID'
+                                            },
+                                            'driverId': {
+                                                'type': 'string',
+                                                'description': 'Assigned driver ID'
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -166,35 +205,52 @@ def get_specification():
                         '200': success_response(
                             'Deliveries retrieved successfully',
                             {
-                                'type': 'array',
-                                'items': {
-                                    'type': 'object',
-                                    'properties': {
-                                        'delivery_id': {
-                                            'type': 'string',
-                                            'description': 'Delivery ID'
-                                        },
-                                        'timeslot': {
-                                            'type': 'integer',
-                                            'description': 'Delivery timeslot (Unix timestamp)'
-                                        },
-                                        'location': {
-                                            'type': 'string',
-                                            'description': 'Delivery location'
-                                        },
-                                        'order_id': {
-                                            'type': 'string',
-                                            'description': 'Associated order ID'
-                                        },
-                                        'status': {
-                                            'type': 'string',
-                                            'description': 'Delivery status',
-                                            'enum': [
-                                                'Assigned to Driver',
-                                                'Picked up by Driver',
-                                                'Delivered by Driver',
-                                                'Received by Customer'
-                                            ]
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'array',
+                                        'items': {
+                                            'type': 'object',
+                                            'properties': {
+                                                'delivery_id': {
+                                                    'type': 'string',
+                                                    'description': 'Delivery ID'
+                                                },
+                                                'timeslot': {
+                                                    'type': 'integer',
+                                                    'description': 'Delivery timeslot (Unix timestamp)'
+                                                },
+                                                'location': {
+                                                    'type': 'string',
+                                                    'description': 'Delivery location'
+                                                },
+                                                'order_id': {
+                                                    'type': 'string',
+                                                    'description': 'Associated order ID'
+                                                },
+                                                'status': {
+                                                    'type': 'string',
+                                                    'description': 'Delivery status',
+                                                    'enum': [
+                                                        'Assigned to Driver',
+                                                        'Picked up by Driver',
+                                                        'Delivered by Driver',
+                                                        'Received by Customer',
+                                                        'Pending Cancellation',
+                                                        'Escalated',
+                                                        'Cancelled'
+                                                    ]
+                                                },
+                                                'cancellation_status': {
+                                                    'type': 'string',
+                                                    'description': 'Cancellation status',
+                                                    'nullable': True
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -237,22 +293,51 @@ def get_specification():
                                             'enum': [
                                                 'Picked up by Driver',
                                                 'Delivered by Driver',
-                                                'Received by Customer'
+                                                'Received by Customer',
+                                                'Pending Cancellation'
                                             ]
+                                        },
+                                        'timeslot': {
+                                            'type': 'integer',
+                                            'description': 'Delivery timeslot (Unix timestamp)'
                                         }
                                     },
-                                    'required': ['order_id', 'status']
+                                    'required': ['order_id', 'status', 'timeslot']
                                 }
                             }
                         }
                     },
                     'responses': {
-                        '200': success_response('Delivery status updated successfully'),
+                        '200': success_response(
+                            'Delivery status updated successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Delivery status updated'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Invalid request format'),
                         '404': error_response('Delivery or order not found'),
                         '500': error_response('Internal server error')
                     }
                 })
             ])
+        },
+        'components': {
+            'securitySchemes': {
+                'BearerAuth': {
+                    'type': 'http',
+                    'scheme': 'bearer',
+                    'bearerFormat': 'JWT'
+                }
+            }
         }
-    } 
+    }

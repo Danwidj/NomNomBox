@@ -75,11 +75,54 @@ def get_specification():
                                 }
                             }
                         ),
-                        '400': error_response('Customer ID is required'),
-                        '500': error_response('Service communication error or unexpected error'),
-                        '404': error_response('Customer not found or no order history available')
+                        '400': error_response(
+                            'Customer ID is required',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'error': {
+                                        'type': 'string',
+                                        'example': 'Customer ID is required'
+                                    }
+                                }
+                            }
+                        ),
+                        '500': error_response(
+                            'Service communication error or unexpected error',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'error': {
+                                        'type': 'string',
+                                        'examples': [
+                                            'Failed to fetch customer details',
+                                            'Failed to fetch order history',
+                                            'Failed to fetch available meal kits',
+                                            'Failed to get recommendations',
+                                            'Service communication error: {error details}',
+                                            'Unexpected error: {error details}'
+                                        ]
+                                    },
+                                    'response': {
+                                        'type': 'object',
+                                        'description': 'Original error response from the service',
+                                        'nullable': True
+                                    }
+                                }
+                            }
+                        )
                     }
                 })
             ])
+        },
+        'components': {
+            'securitySchemes': {
+                'BearerAuth': {
+                    'type': 'http',
+                    'scheme': 'bearer',
+                    'bearerFormat': 'JWT',
+                    'description': 'JWT token for authenticating with the Customer service'
+                }
+            }
         }
-    } 
+    }

@@ -60,7 +60,22 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '201': success_response('Meal kit added successfully'),
+                        '201': success_response(
+                            'Meal kit added successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 201
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Meal kit added'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Missing required fields'),
                         '500': error_response('Internal server error')
                     }
@@ -74,64 +89,73 @@ def get_specification():
                         '200': success_response(
                             'Meal kits retrieved successfully',
                             {
-                                'type': 'array',
-                                'items': {
-                                    'type': 'object',
-                                    'properties': {
-                                        'id': {
-                                            'type': 'string',
-                                            'description': 'Meal kit ID'
-                                        },
-                                        'name': {
-                                            'type': 'string',
-                                            'description': 'Name of the meal kit'
-                                        },
-                                        'description': {
-                                            'type': 'string',
-                                            'description': 'Description of the meal kit'
-                                        },
-                                        'dietaryTags': {
-                                            'type': 'array',
-                                            'items': {
-                                                'type': 'string'
-                                            },
-                                            'description': 'Dietary tags (e.g., vegetarian, gluten-free)'
-                                        },
-                                        'imageURL': {
-                                            'type': 'string',
-                                            'description': 'URL of the meal kit image'
-                                        },
-                                        'ingredients': {
-                                            'type': 'array',
-                                            'items': {
-                                                'type': 'string'
-                                            },
-                                            'description': 'List of ingredients'
-                                        },
-                                        'isAvailable': {
-                                            'type': 'boolean',
-                                            'description': 'Whether the meal kit is available'
-                                        },
-                                        'numAvailable': {
-                                            'type': 'integer',
-                                            'description': 'Number of units available'
-                                        },
-                                        'nutritionalInfo': {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'array',
+                                        'items': {
                                             'type': 'object',
-                                            'description': 'Nutritional information'
-                                        },
-                                        'preparationTime': {
-                                            'type': 'integer',
-                                            'description': 'Preparation time in minutes'
-                                        },
-                                        'price': {
-                                            'type': 'number',
-                                            'format': 'float',
-                                            'description': 'Price of the meal kit'
-                                        },
-                                        'servings': {
-                                            'type': 'integer',
-                                            'description': 'Number of servings'
+                                            'properties': {
+                                                'id': {
+                                                    'type': 'string',
+                                                    'description': 'Meal kit ID'
+                                                },
+                                                'name': {
+                                                    'type': 'string',
+                                                    'description': 'Name of the meal kit'
+                                                },
+                                                'description': {
+                                                    'type': 'string',
+                                                    'description': 'Description of the meal kit'
+                                                },
+                                                'dietaryTags': {
+                                                    'type': 'array',
+                                                    'items': {
+                                                        'type': 'string'
+                                                    },
+                                                    'description': 'Dietary tags (e.g., vegetarian, gluten-free)'
+                                                },
+                                                'imageURL': {
+                                                    'type': 'string',
+                                                    'description': 'URL of the meal kit image'
+                                                },
+                                                'ingredients': {
+                                                    'type': 'array',
+                                                    'items': {
+                                                        'type': 'string'
+                                                    },
+                                                    'description': 'List of ingredients'
+                                                },
+                                                'isAvailable': {
+                                                    'type': 'boolean',
+                                                    'description': 'Whether the meal kit is available'
+                                                },
+                                                'numAvailable': {
+                                                    'type': 'integer',
+                                                    'description': 'Number of units available'
+                                                },
+                                                'nutritionalInfo': {
+                                                    'type': 'object',
+                                                    'description': 'Nutritional information'
+                                                },
+                                                'preparationTime': {
+                                                    'type': 'integer',
+                                                    'description': 'Preparation time in minutes'
+                                                },
+                                                'price': {
+                                                    'type': 'number',
+                                                    'format': 'float',
+                                                    'description': 'Price of the meal kit'
+                                                },
+                                                'servings': {
+                                                    'type': 'integer',
+                                                    'description': 'Number of servings'
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -166,7 +190,22 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '201': success_response('Meal kits uploaded successfully'),
+                        '201': success_response(
+                            'Meal kits uploaded successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 201
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Successfully uploaded {count} meal kits'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Invalid file format or missing file'),
                         '500': error_response('Internal server error')
                     }
@@ -177,14 +216,14 @@ def get_specification():
                     'tags': ['Inventory'],
                     'operationId': 'getMealKit',
                     'summary': 'Get meal kit',
-                    'description': 'Get details of a specific meal kit',
+                    'description': 'Get details of a specific meal kit by ID field',
                     'parameters': [
                         {
                             'name': 'kit_id',
                             'in': 'path',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'description': 'Meal kit ID'
+                            'description': 'Meal kit ID field value (not document ID)'
                         }
                     ],
                     'responses': {
@@ -193,60 +232,69 @@ def get_specification():
                             {
                                 'type': 'object',
                                 'properties': {
-                                    'id': {
-                                        'type': 'string',
-                                        'description': 'Meal kit ID'
-                                    },
-                                    'name': {
-                                        'type': 'string',
-                                        'description': 'Name of the meal kit'
-                                    },
-                                    'description': {
-                                        'type': 'string',
-                                        'description': 'Description of the meal kit'
-                                    },
-                                    'dietaryTags': {
-                                        'type': 'array',
-                                        'items': {
-                                            'type': 'string'
-                                        },
-                                        'description': 'Dietary tags (e.g., vegetarian, gluten-free)'
-                                    },
-                                    'imageURL': {
-                                        'type': 'string',
-                                        'description': 'URL of the meal kit image'
-                                    },
-                                    'ingredients': {
-                                        'type': 'array',
-                                        'items': {
-                                            'type': 'string'
-                                        },
-                                        'description': 'List of ingredients'
-                                    },
-                                    'isAvailable': {
-                                        'type': 'boolean',
-                                        'description': 'Whether the meal kit is available'
-                                    },
-                                    'numAvailable': {
+                                    'code': {
                                         'type': 'integer',
-                                        'description': 'Number of units available'
+                                        'example': 200
                                     },
-                                    'nutritionalInfo': {
+                                    'data': {
                                         'type': 'object',
-                                        'description': 'Nutritional information'
-                                    },
-                                    'preparationTime': {
-                                        'type': 'integer',
-                                        'description': 'Preparation time in minutes'
-                                    },
-                                    'price': {
-                                        'type': 'number',
-                                        'format': 'float',
-                                        'description': 'Price of the meal kit'
-                                    },
-                                    'servings': {
-                                        'type': 'integer',
-                                        'description': 'Number of servings'
+                                        'properties': {
+                                            'id': {
+                                                'type': 'string',
+                                                'description': 'Meal kit ID'
+                                            },
+                                            'name': {
+                                                'type': 'string',
+                                                'description': 'Name of the meal kit'
+                                            },
+                                            'description': {
+                                                'type': 'string',
+                                                'description': 'Description of the meal kit'
+                                            },
+                                            'dietaryTags': {
+                                                'type': 'array',
+                                                'items': {
+                                                    'type': 'string'
+                                                },
+                                                'description': 'Dietary tags (e.g., vegetarian, gluten-free)'
+                                            },
+                                            'imageURL': {
+                                                'type': 'string',
+                                                'description': 'URL of the meal kit image'
+                                            },
+                                            'ingredients': {
+                                                'type': 'array',
+                                                'items': {
+                                                    'type': 'string'
+                                                },
+                                                'description': 'List of ingredients'
+                                            },
+                                            'isAvailable': {
+                                                'type': 'boolean',
+                                                'description': 'Whether the meal kit is available'
+                                            },
+                                            'numAvailable': {
+                                                'type': 'integer',
+                                                'description': 'Number of units available'
+                                            },
+                                            'nutritionalInfo': {
+                                                'type': 'object',
+                                                'description': 'Nutritional information'
+                                            },
+                                            'preparationTime': {
+                                                'type': 'integer',
+                                                'description': 'Preparation time in minutes'
+                                            },
+                                            'price': {
+                                                'type': 'number',
+                                                'format': 'float',
+                                                'description': 'Price of the meal kit'
+                                            },
+                                            'servings': {
+                                                'type': 'integer',
+                                                'description': 'Number of servings'
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -259,14 +307,14 @@ def get_specification():
                     'tags': ['Inventory'],
                     'operationId': 'updateStock',
                     'summary': 'Update stock',
-                    'description': 'Update the stock quantity of a meal kit',
+                    'description': 'Update the stock quantity (numAvailable field) of a meal kit',
                     'parameters': [
                         {
                             'name': 'kit_id',
                             'in': 'path',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'description': 'Meal kit ID'
+                            'description': 'Meal kit ID field value (not document ID)'
                         }
                     ],
                     'requestBody': {
@@ -278,7 +326,7 @@ def get_specification():
                                     'properties': {
                                         'stock': {
                                             'type': 'integer',
-                                            'description': 'New stock quantity'
+                                            'description': 'New stock quantity (updates numAvailable field)'
                                         }
                                     },
                                     'required': ['stock']
@@ -287,7 +335,22 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '200': success_response('Stock updated successfully'),
+                        '200': success_response(
+                            'Stock updated successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Stock updated successfully'
+                                    }
+                                }
+                            }
+                        ),
                         '400': error_response('Missing stock field'),
                         '404': error_response('Meal kit not found'),
                         '500': error_response('Internal server error')
@@ -297,22 +360,37 @@ def get_specification():
                     'tags': ['Inventory'],
                     'operationId': 'deleteMealKit',
                     'summary': 'Delete meal kit',
-                    'description': 'Delete a meal kit from the inventory',
+                    'description': 'Delete a meal kit from the inventory (by document ID)',
                     'parameters': [
                         {
                             'name': 'kit_id',
                             'in': 'path',
                             'required': True,
                             'schema': {'type': 'string'},
-                            'description': 'Meal kit ID'
+                            'description': 'Meal kit document ID (not the id field)'
                         }
                     ],
                     'responses': {
-                        '200': success_response('Meal kit deleted successfully'),
+                        '200': success_response(
+                            'Meal kit deleted successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Meal kit deleted successfully'
+                                    }
+                                }
+                            }
+                        ),
                         '404': error_response('Meal kit not found'),
                         '500': error_response('Internal server error')
                     }
                 })
             ])
         }
-    } 
+    }

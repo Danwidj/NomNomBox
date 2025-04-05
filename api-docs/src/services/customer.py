@@ -9,25 +9,20 @@ def get_specification():
         'tags': [
             {
                 'name': 'Customer',
-                'description': 'Operations for managing customers',
+                'description': 'Operations for managing customers and authentication',
                 'x-displayName': 'Customer'
-            },
-            {
-                'name': 'Authentication',
-                'description': 'Operations for user authentication',
-                'x-displayName': 'Authentication'
             }
         ],
         'x-tagGroups': [
             {
                 'name': 'Customer Service',
-                'tags': ['Customer', 'Authentication']
+                'tags': ['Customer']
             }
         ],
         'paths': {
             '/register': {
                 'post': {
-                    'tags': ['Authentication'],
+                    'tags': ['Customer'],
                     'operationId': 'registerUser',
                     'summary': 'Register user',
                     'description': 'Register a new user account',
@@ -101,7 +96,7 @@ def get_specification():
             },
             '/login': {
                 'post': {
-                    'tags': ['Authentication'],
+                    'tags': ['Customer'],
                     'operationId': 'loginUser',
                     'summary': 'Login user',
                     'description': 'Authenticate user and return access token',
@@ -159,7 +154,7 @@ def get_specification():
                     }
                 },
                 'options': {
-                    'tags': ['Authentication'],
+                    'tags': ['Customer'],
                     'operationId': 'loginOptions',
                     'summary': 'CORS preflight for login',
                     'description': 'Handles CORS preflight OPTIONS request for the login endpoint',

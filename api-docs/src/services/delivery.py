@@ -20,13 +20,103 @@ def get_specification():
             }
         ],
         'paths': {
-            '/place_delivery_request': OrderedDict([
+            '/delivery': OrderedDict([
+                ('get', {
+                    'tags': ['Delivery'],
+                    'operationId': 'getDeliveries',
+                    'summary': 'Get deliveries',
+                    'description': 'Get deliveries based on provided query parameters',
+                    'parameters': [
+                        {
+                            'name': 'driver_id',
+                            'in': 'query',
+                            'required': False,
+                            'schema': {'type': 'string'},
+                            'description': 'Driver ID to filter deliveries by driver'
+                        },
+                        {
+                            'name': 'order_id',
+                            'in': 'query',
+                            'required': False,
+                            'schema': {'type': 'string'},
+                            'description': 'Order ID to filter deliveries by order'
+                        },
+                        {
+                            'name': 'start_time',
+                            'in': 'query',
+                            'required': False,
+                            'schema': {'type': 'integer'},
+                            'description': 'Start time (Unix timestamp) for time range filtering'
+                        },
+                        {
+                            'name': 'end_time',
+                            'in': 'query',
+                            'required': False,
+                            'schema': {'type': 'integer'},
+                            'description': 'End time (Unix timestamp) for time range filtering'
+                        }
+                    ],
+                    'responses': {
+                        '200': success_response(
+                            'Deliveries retrieved successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'deliveries': {
+                                                'type': 'array',
+                                                'items': {
+                                                    'type': 'object',
+                                                    'properties': {
+                                                        'id': {
+                                                            'type': 'integer',
+                                                            'description': 'Delivery ID'
+                                                        },
+                                                        'order_id': {
+                                                            'type': 'string',
+                                                            'description': 'Associated order ID'
+                                                        },
+                                                        'timeslot': {
+                                                            'type': 'string',
+                                                            'format': 'date-time',
+                                                            'description': 'Delivery timeslot'
+                                                        },
+                                                        'driver_id': {
+                                                            'type': 'integer',
+                                                            'description': 'Driver ID'
+                                                        },
+                                                        'location': {
+                                                            'type': 'string',
+                                                            'description': 'Delivery location'
+                                                        },
+                                                        'cancellation_status': {
+                                                            'type': 'string',
+                                                            'nullable': True,
+                                                            'description': 'Cancellation status'
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ),
+                        '404': error_response('No deliveries found for the specified criteria'),
+                        '500': error_response('Internal server error')
+                    }
+                }),
                 ('post', {
                     'tags': ['Delivery'],
-                    'operationId': 'placeDeliveryRequest',
-                    'summary': 'Place delivery request',
-                    'description': 'Create a new delivery request and assign a driver',
-                    'security': [{'BearerAuth': []}],
+                    'operationId': 'createDelivery',
+                    'summary': 'Create delivery',
+                    'description': 'Create a new delivery',
                     'requestBody': {
                         'required': True,
                         'content': {
@@ -34,73 +124,9 @@ def get_specification():
                                 'schema': {
                                     'type': 'object',
                                     'properties': {
-                                        'user_id': {
-                                            'type': 'string',
-                                            'description': 'Customer ID'
-                                        },
                                         'order_id': {
                                             'type': 'string',
                                             'description': 'Order ID'
-                                        },
-                                        'delivery_time': {
-                                            'type': 'integer',
-                                            'description': 'Desired delivery time (Unix timestamp)'
-                                        }
-                                    },
-                                    'required': ['user_id', 'order_id', 'delivery_time']
-                                }
-                            }
-                        }
-                    },
-                    'responses': {
-                        '200': success_response(
-                            'Delivery request placed successfully',
-                            {
-                                'type': 'object',
-                                'properties': {
-                                    'deliveryId': {
-                                        'type': 'string',
-                                        'description': 'Assigned delivery ID'
-                                    },
-                                    'driverId': {
-                                        'type': 'string',
-                                        'description': 'Assigned driver ID'
-                                    }
-                                }
-                            }
-                        ),
-                        '400': error_response('Invalid request format'),
-                        '401': error_response('Missing or invalid authorization token'),
-                        '500': error_response('Internal server error')
-                    }
-                })
-            ]),
-            '/deliveries': OrderedDict([
-                ('get', {
-                    'tags': ['Delivery'],
-                    'operationId': 'getAssignedDeliveries',
-                    'summary': 'Get assigned deliveries',
-                    'description': 'Get all deliveries assigned to a specific driver',
-                    'parameters': [
-                        {
-                            'name': 'driver_id',
-                            'in': 'query',
-                            'required': True,
-                            'schema': {'type': 'string'},
-                            'description': 'Driver ID'
-                        }
-                    ],
-                    'responses': {
-                        '200': success_response(
-                            'Deliveries retrieved successfully',
-                            {
-                                'type': 'array',
-                                'items': {
-                                    'type': 'object',
-                                    'properties': {
-                                        'delivery_id': {
-                                            'type': 'string',
-                                            'description': 'Delivery ID'
                                         },
                                         'timeslot': {
                                             'type': 'integer',
@@ -110,38 +136,140 @@ def get_specification():
                                             'type': 'string',
                                             'description': 'Delivery location'
                                         },
-                                        'order_id': {
-                                            'type': 'string',
-                                            'description': 'Associated order ID'
+                                        'driver_id': {
+                                            'type': 'integer',
+                                            'description': 'Driver ID'
                                         },
-                                        'status': {
+                                        'cancellation_status': {
                                             'type': 'string',
-                                            'description': 'Delivery status',
-                                            'enum': [
-                                                'Assigned to Driver',
-                                                'Picked up by Driver',
-                                                'Delivered by Driver',
-                                                'Received by Customer'
-                                            ]
+                                            'nullable': True,
+                                            'description': 'Cancellation status'
+                                        }
+                                    },
+                                    'required': ['order_id', 'timeslot', 'location', 'driver_id']
+                                }
+                            }
+                        }
+                    },
+                    'responses': {
+                        '201': success_response(
+                            'Delivery created successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 201
+                                    },
+                                    'data': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'id': {
+                                                'type': 'integer',
+                                                'description': 'Delivery ID'
+                                            },
+                                            'order_id': {
+                                                'type': 'string',
+                                                'description': 'Order ID'
+                                            },
+                                            'timeslot': {
+                                                'type': 'string',
+                                                'format': 'date-time',
+                                                'description': 'Delivery timeslot'
+                                            },
+                                            'driver_id': {
+                                                'type': 'integer',
+                                                'description': 'Driver ID'
+                                            },
+                                            'location': {
+                                                'type': 'string',
+                                                'description': 'Delivery location'
+                                            },
+                                            'cancellation_status': {
+                                                'type': 'string',
+                                                'nullable': True,
+                                                'description': 'Cancellation status'
+                                            }
                                         }
                                     }
                                 }
                             }
                         ),
-                        '400': error_response('Missing driver_id parameter'),
                         '500': error_response('Internal server error')
                     }
                 })
             ]),
-            '/deliveries/{delivery_id}': OrderedDict([
-                ('patch', {
+            '/delivery/{id}': OrderedDict([
+                ('get', {
                     'tags': ['Delivery'],
-                    'operationId': 'updateDeliveryStatus',
-                    'summary': 'Update delivery status',
-                    'description': 'Update the status of a delivery',
+                    'operationId': 'getDeliveryById',
+                    'summary': 'Get delivery by ID',
+                    'description': 'Get a delivery by its ID',
                     'parameters': [
                         {
-                            'name': 'delivery_id',
+                            'name': 'id',
+                            'in': 'path',
+                            'required': True,
+                            'schema': {'type': 'integer'},
+                            'description': 'Delivery ID'
+                        }
+                    ],
+                    'responses': {
+                        '200': success_response(
+                            'Delivery retrieved successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'id': {
+                                                'type': 'integer',
+                                                'description': 'Delivery ID'
+                                            },
+                                            'order_id': {
+                                                'type': 'string',
+                                                'description': 'Order ID'
+                                            },
+                                            'timeslot': {
+                                                'type': 'string',
+                                                'format': 'date-time',
+                                                'description': 'Delivery timeslot'
+                                            },
+                                            'driver_id': {
+                                                'type': 'integer',
+                                                'description': 'Driver ID'
+                                            },
+                                            'location': {
+                                                'type': 'string',
+                                                'description': 'Delivery location'
+                                            },
+                                            'cancellation_status': {
+                                                'type': 'string',
+                                                'nullable': True,
+                                                'description': 'Cancellation status'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ),
+                        '404': error_response('Delivery not found'),
+                        '500': error_response('Internal server error')
+                    }
+                }),
+                ('put', {
+                    'tags': ['Delivery'],
+                    'operationId': 'updateDelivery',
+                    'summary': 'Update delivery',
+                    'description': 'Update all fields of a delivery',
+                    'parameters': [
+                        {
+                            'name': 'id',
                             'in': 'path',
                             'required': True,
                             'schema': {'type': 'integer'},
@@ -156,38 +284,93 @@ def get_specification():
                                     'type': 'object',
                                     'properties': {
                                         'order_id': {
-                                            'type': 'integer',
+                                            'type': 'string',
                                             'description': 'Order ID'
                                         },
-                                        'status': {
+                                        'timeslot': {
+                                            'type': 'integer',
+                                            'description': 'Delivery timeslot (Unix timestamp)'
+                                        },
+                                        'location': {
                                             'type': 'string',
-                                            'description': 'New delivery status',
-                                            'enum': [
-                                                'Picked up by Driver',
-                                                'Delivered by Driver',
-                                                'Received by Customer'
-                                            ]
+                                            'description': 'Delivery location'
+                                        },
+                                        'driver_id': {
+                                            'type': 'integer',
+                                            'description': 'Driver ID'
+                                        },
+                                        'cancellation_status': {
+                                            'type': 'string',
+                                            'nullable': True,
+                                            'description': 'Cancellation status'
                                         }
-                                    },
-                                    'required': ['order_id', 'status']
+                                    }
                                 }
                             }
                         }
                     },
                     'responses': {
-                        '200': success_response('Delivery status updated successfully'),
-                        '400': error_response('Invalid request format'),
-                        '404': error_response('Delivery or order not found'),
+                        '200': success_response(
+                            'Delivery updated successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'id': {
+                                                'type': 'integer',
+                                                'description': 'Delivery ID'
+                                            },
+                                            'order_id': {
+                                                'type': 'string',
+                                                'description': 'Order ID'
+                                            },
+                                            'timeslot': {
+                                                'type': 'string',
+                                                'format': 'date-time',
+                                                'description': 'Delivery timeslot'
+                                            },
+                                            'driver_id': {
+                                                'type': 'integer',
+                                                'description': 'Driver ID'
+                                            },
+                                            'location': {
+                                                'type': 'string',
+                                                'description': 'Delivery location'
+                                            },
+                                            'cancellation_status': {
+                                                'type': 'string',
+                                                'nullable': True,
+                                                'description': 'Cancellation status'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ),
+                        '404': error_response('Delivery not found'),
                         '500': error_response('Internal server error')
                     }
-                })
-            ]),
-            '/availability': OrderedDict([
-                ('post', {
+                }),
+                ('patch', {
                     'tags': ['Delivery'],
-                    'operationId': 'updateDriverAvailability',
-                    'summary': 'Update driver availability',
-                    'description': 'Update a driver\'s availability for specific timeslots',
+                    'operationId': 'patchDelivery',
+                    'summary': 'Partially update delivery',
+                    'description': 'Update specific fields of a delivery',
+                    'parameters': [
+                        {
+                            'name': 'id',
+                            'in': 'path',
+                            'required': True,
+                            'schema': {'type': 'integer'},
+                            'description': 'Delivery ID'
+                        }
+                    ],
                     'requestBody': {
                         'required': True,
                         'content': {
@@ -195,40 +378,79 @@ def get_specification():
                                 'schema': {
                                     'type': 'object',
                                     'properties': {
-                                        'driver_id': {
+                                        'order_id': {
                                             'type': 'string',
+                                            'description': 'Order ID'
+                                        },
+                                        'timeslot': {
+                                            'type': 'integer',
+                                            'description': 'Delivery timeslot (Unix timestamp)'
+                                        },
+                                        'location': {
+                                            'type': 'string',
+                                            'description': 'Delivery location'
+                                        },
+                                        'driver_id': {
+                                            'type': 'integer',
                                             'description': 'Driver ID'
                                         },
-                                        'changes': {
-                                            'type': 'array',
-                                            'items': {
-                                                'type': 'object',
-                                                'properties': {
-                                                    'timeslot': {
-                                                        'type': 'integer',
-                                                        'description': 'Timeslot (Unix timestamp)'
-                                                    },
-                                                    'change_type': {
-                                                        'type': 'string',
-                                                        'enum': ['add', 'delete'],
-                                                        'description': 'Type of availability change'
-                                                    }
-                                                },
-                                                'required': ['timeslot', 'change_type']
-                                            }
+                                        'cancellation_status': {
+                                            'type': 'string',
+                                            'description': 'Cancellation status'
                                         }
-                                    },
-                                    'required': ['driver_id', 'changes']
+                                    }
                                 }
                             }
                         }
                     },
                     'responses': {
-                        '200': success_response('Driver availability updated successfully'),
-                        '400': error_response('Invalid request or driver already assigned to deliveries'),
+                        '200': success_response(
+                            'Delivery updated successfully',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'data': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'id': {
+                                                'type': 'integer',
+                                                'description': 'Delivery ID'
+                                            },
+                                            'order_id': {
+                                                'type': 'string',
+                                                'description': 'Order ID'
+                                            },
+                                            'timeslot': {
+                                                'type': 'string',
+                                                'format': 'date-time',
+                                                'description': 'Delivery timeslot'
+                                            },
+                                            'driver_id': {
+                                                'type': 'integer',
+                                                'description': 'Driver ID'
+                                            },
+                                            'location': {
+                                                'type': 'string',
+                                                'description': 'Delivery location'
+                                            },
+                                            'cancellation_status': {
+                                                'type': 'string',
+                                                'nullable': True,
+                                                'description': 'Cancellation status'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ),
+                        '404': error_response('Delivery not found'),
                         '500': error_response('Internal server error')
                     }
                 })
             ])
         }
-    } 
+    }

@@ -33,6 +33,10 @@ def get_specification():
                                 'schema': {
                                     'type': 'object',
                                     'properties': {
+                                        'customerId': {
+                                            'type': 'string',
+                                            'description': 'Customer ID'
+                                        },
                                         'items': {
                                             'type': 'array',
                                             'description': 'List of items to order',
@@ -59,7 +63,7 @@ def get_specification():
                                             'description': 'Total price of the order'
                                         }
                                     },
-                                    'required': ['items', 'totalPrice']
+                                    'required': ['customerId', 'items', 'totalPrice']
                                 }
                             }
                         }
@@ -70,6 +74,14 @@ def get_specification():
                             {
                                 'type': 'object',
                                 'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 201
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Order placed, payment completed, and numAvailable updated'
+                                    },
                                     'orderId': {
                                         'type': 'string',
                                         'description': 'Created order ID'
@@ -81,7 +93,22 @@ def get_specification():
                                 }
                             }
                         ),
-                        '400': error_response('Error in checkout process (inventory/order/payment)'),
+                        '400': error_response(
+                            'Error in checkout process (inventory/order/payment)',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 400
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Error fetching inventory for {item name}'
+                                    }
+                                }
+                            }
+                        ),
                         '500': error_response('Internal server error')
                     }
                 })
@@ -113,7 +140,7 @@ def get_specification():
                                         },
                                         'token': {
                                             'type': 'string',
-                                            'description': 'Authentication token'
+                                            'description': 'Authentication token for accessing customer service'
                                         }
                                     },
                                     'required': ['orderId', 'session_id', 'user_id', 'token']
@@ -122,11 +149,63 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '200': success_response('Payment confirmed, order updated, and stock adjusted'),
-                        '400': error_response('Error in payment verification or updating order/inventory'),
-                        '500': error_response('Internal server error')
+                        '200': success_response(
+                            'Payment confirmed, order updated, and stock adjusted',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 200
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Payment confirmed, order updated, and stock adjusted'
+                                    }
+                                }
+                            }
+                        ),
+                        '400': error_response(
+                            'Error in payment verification or updating order/inventory',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 400
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'examples': [
+                                            'Error verifying payment status',
+                                            'Payment not completed',
+                                            'Error updating order payment status',
+                                            'Error fetching order details',
+                                            'Invalid order data received',
+                                            'Error updating stock for {item name}'
+                                        ]
+                                    }
+                                }
+                            }
+                        ),
+                        '500': error_response(
+                            'Internal server error',
+                            {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {
+                                        'type': 'integer',
+                                        'example': 500
+                                    },
+                                    'message': {
+                                        'type': 'string',
+                                        'example': 'Error processing payment success: {error details}'
+                                    }
+                                }
+                            }
+                        )
                     }
                 })
             ])
         }
-    } 
+    }
