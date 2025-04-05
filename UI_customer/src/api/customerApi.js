@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Use the service name from docker-compose.yml instead of localhost
-const API_URL = 'http://localhost:5002'
+const API_URL = 'http://localhost:5003'
 
 const customerApi = {
   // Register a new customer

@@ -399,7 +399,7 @@ export default {
     
     const fetchUserData = async (customerId, token) => {
       try {
-        const response = await fetch(`http://localhost:5002/customer/${customerId}`, {
+        const response = await fetch(`http://localhost:5003/customer/${customerId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
