@@ -198,6 +198,19 @@ services:
     depends_on:
       - api-docs
 
+  send_query:
+    image: NomNomBox/send_query:latest
+    build:
+      context: ./Send_query
+      dockerfile: Dockerfile
+    ports:
+      - "5100:5100"
+    depends_on:
+      - customer
+      - order
+      - inventory
+      - chathistory
+
 networks:
   default:
     driver: bridge
