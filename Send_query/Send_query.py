@@ -19,11 +19,11 @@ CORS(app, resources={
 })
 
 # Service URLs
-CUSTOMER_SERVICE_URL = "http://localhost:5002"  # Customer service
-ORDER_SERVICE_URL = "http://localhost:5003"     # Order service
-INVENTORY_SERVICE_URL = "http://localhost:5006"  # Inventory service
-CHATBOT_SERVICE_URL = "http://localhost:5009"   # Chatbot service
-CHAT_HISTORY_URL = "http://localhost:5012"      # Chat history service
+CUSTOMER_SERVICE_URL = "http://customer:5002"  # Customer service
+ORDER_SERVICE_URL = "http://order:5003"     # Order service
+INVENTORY_SERVICE_URL = "http://inventory:5006"  # Inventory service
+CHATBOT_SERVICE_URL = "http://gemini:5009"   # Chatbot service
+CHAT_HISTORY_URL = "http://chathistory:5012"      # Chat history service
 
 @app.route("/api/recommendations/<customer_id>", methods=["POST"])
 def get_meal_recommendations(customer_id):
