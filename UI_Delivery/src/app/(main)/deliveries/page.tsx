@@ -196,7 +196,6 @@ export default function DeliveryList() {
     const matchesTab = activeTab === "all" || delivery.status === activeTab;
     const matchesSearch =
       searchTerm === "" ||
-      delivery.delivery_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       timeRange.includes(searchTerm) ||
       date.includes(searchTerm) ||
       delivery.location.toLowerCase().includes(searchTerm.toLowerCase());

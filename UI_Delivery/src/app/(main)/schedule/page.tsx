@@ -969,7 +969,13 @@ export default function DateBasedDriverSchedule() {
               </p>
             </div>
           </div>
-          <Button type="submit" size="lg" disabled={newSchedule.length === 0}>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={
+              newSchedule.length === 0 && deletedTimeslots.current.size === 0
+            }
+          >
             Save Schedule
           </Button>
           {validationErrors.length > 0 && (
