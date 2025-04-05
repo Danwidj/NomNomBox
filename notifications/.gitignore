@@ -5,3 +5,4 @@ node_modules
 notifications-serviceAccountKey.json
 __pycache__/
 venv
+notifications_service.py

@@ -138,11 +138,7 @@ def get_meal_kit(kit_id):
         return jsonify({"code": 500, "message": f"Error retrieving meal kit: {str(e)}"}), 500
 
 
-@app.route("/inventory/debug", methods=["GET"])
-def debug_inventory():
-    kits_ref = db.collection("inventory").stream()
-    kits = [kit.id for kit in kits_ref]
-    return jsonify({"code": 200, "message": "Existing meal kit IDs", "ids": kits}), 200
+
 
 
 # Add a new meal kit
@@ -187,7 +183,7 @@ def update_stock(kit_id):
         # Get the first matching document (Firestore generates random document IDs)
         doc_ref = db.collection("inventory").document(kit_docs[0].id)
 
-        # ✅ Corrected: Proper transaction function
+        # Proper transaction function
         @firestore.transactional
         def stock_transaction(transaction, ref):
             doc = ref.get(transaction=transaction)
