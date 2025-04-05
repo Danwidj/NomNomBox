@@ -35,7 +35,7 @@ export default function LoginPage() {
       </div>
       <div className="relative hidden bg-muted lg:block">
         <img
-          src="/images/nomnombox.png"
+          src="/images/driver.png"
           alt="This is a website for NomNomBox drivers to manage their availability and deliveries"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
         />
