@@ -590,15 +590,33 @@ def get_assigned_deliveries():
         orders = get_orders(order_ids)
         orders = orders["data"]
         # dk if there is error in this filtering logic
-        for i in range(len(response)):
-            if "error" in orders[i].keys():
-                pass
+        # for i in range(len(response)):
+        #     if "error" in orders[i].keys():
+        #         pass
 
+        #     else:
+        #         if response[i]["cancellation_status"] is not None:
+        #             response[i]["status"] = response[i]["cancellation_status"]
+        #         else:                
+        #             response[i]["status"] = orders[i]["data"]["status"]
+        # Step 1: Build a lookup dictionary for orders by order_id
+        orders_by_id = {order["order_id"]: order for order in orders}
+
+        # Step 2: Update delivery status using order info
+        for delivery in deliveries:
+            order_id = delivery["order_id"]
+            order = orders_by_id.get(order_id)
+
+            # Skip if order not found or contains error
+            if not order or "error" in order:
+                continue
+
+            # Prioritize cancellation_status if present
+            if delivery.get("cancellation_status") is not None:
+                delivery["status"] = delivery["cancellation_status"]
             else:
-                if response[i]["cancellation_status"] is not None:
-                    response[i]["status"] = response[i]["cancellation_status"]
-                else:                
-                    response[i]["status"] = orders[i]["data"]["status"]
+                delivery["status"] = order["data"]["status"]
+
             
             # orders.append(order)
             # if order["code"] == 404:
@@ -612,7 +630,7 @@ def get_assigned_deliveries():
         logging.info(f"response from orders: {pretty_json}")
         return jsonify({
             "code":200,
-            "data": response
+            "data": deliveries
         }), 200
     except Exception as e:
         
