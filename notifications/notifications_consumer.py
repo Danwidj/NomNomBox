@@ -27,7 +27,6 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", SMTP_USERNAME)
 
 DELIVERY_PICKEDUP_TEMPLATE = os.getenv("DELIVERY_PICKEDUP_TEMPLATE","Dear Customer,\n\nYour delivery {delivery_id} status has been updated to {status} \nThank you for your order!\n")
-PAYMENT_SUCCESS_TEMPLATE_HTML = os.getenv("PAYMENT_SUCCESS_TEMPLATE_HTML")
 
 
 print(
@@ -81,17 +80,14 @@ def process_message(ch, method, properties, body):
             # Get user email
 
             subject = f"Payment Successful - Order #{order_id}"
-            # body_text = f"Your payment for order #{order_id} was successful!"
-            template = string.Template(PAYMENT_SUCCESS_TEMPLATE_HTML)
-            body_text = template.substitute(order_id=order_id)
-            email_success = send_email(customer_email, subject, body_text)
+            body_text = f"Your payment for order #{order_id} was successful!"
 
             if not customer_email:
                 print(f"No email address found for customer_id. Skipping.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
-            # email_success = send_email(customer_email, subject, body_text)
+            email_success = send_email(customer_email, subject, body_text)
 
         elif routing_key in ( #Change condition of key routing here
             "delivery.pickedup",
@@ -170,18 +166,41 @@ def start_consumer():
     )
     print(f"Exchange '{RABBITMQ_EXCHANGE}' declared")
 
-    queue_name = NOTIFICATIONS_QUEUE # changed to static queues
-    print(f"Queue '{queue_name}' declared")
+    # Actually declare the queue
+    result = channel.queue_declare(
+        queue=NOTIFICATIONS_QUEUE, durable=True
+    )
+    queue_name = result.method.queue
+    print(f"Queue '{queue_name}' declared. Message count: {result.method.message_count}")
 
+    # Bind the queue to various routing keys
+    routing_keys = [
+        "order.payment_success",
+        "delivery.pickedup",
+        "delivery.delivered",
+        "delivery.received",
+        "delivery.assigned"
+    ]
+    
+    for key in routing_keys:
+        channel.queue_bind(
+            exchange=RABBITMQ_EXCHANGE,
+            queue=queue_name,
+            routing_key=key
+        )
+        print(f"Queue '{queue_name}' bound to exchange with routing key '{key}'")
 
     channel.basic_qos(prefetch_count=1)
+    print("QoS prefetch count set to 1")
 
     # Set up consumer
-    channel.basic_consume(queue=queue_name, on_message_callback=process_message) # process_message function
+    channel.basic_consume(
+        queue=queue_name, 
+        on_message_callback=process_message
+    )
 
     print(f"Starting consumer, listening for messages on {queue_name}...")
     channel.start_consuming()
-
 
 if __name__ == "__main__":
     try:

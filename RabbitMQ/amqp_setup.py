@@ -20,7 +20,7 @@ def create_exchange(hostname, port, exchange_name, exchange_type):
         pika.ConnectionParameters(
             host=hostname,
             port=port,
-            heartbeat=300,
+            heartbeat=0,
             blocked_connection_timeout=300,
         )
     )

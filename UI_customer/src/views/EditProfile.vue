@@ -91,6 +91,8 @@ import customerApi from '@/api/customerApi'
 
 export default {
   name: 'EditProfile',
+  // Define emits to fix the Vue warning
+  emits: ['cartUpdated'],
   setup() {
     const router = useRouter()
     const customer = ref({
@@ -117,17 +119,18 @@ export default {
     ])
 
     onMounted(async () => {
-      const token = localStorage.getItem('token')
-      const userId = localStorage.getItem('userId')
+      // Use sessionStorage instead of localStorage for consistency with other components
+      const token = sessionStorage.getItem('token')
+      const customerId = sessionStorage.getItem('customerId')
 
-      if (!token || !userId) {
+      if (!token || !customerId) {
         console.error('User is not authenticated')
         router.push('/login')
         return
       }
 
       try {
-        await fetchUserData(userId, token)
+        await fetchUserData(customerId, token)
         await fetchDietaryTags()
       } catch (error) {
         console.error('Failed to load profile:', error)
@@ -161,9 +164,9 @@ export default {
         console.error('Error fetching customer data:', error)
         if (error.response && error.response.status === 401) {
           // Token expired or invalid
-          localStorage.removeItem('token')
-          localStorage.removeItem('isAuthenticated')
-          localStorage.removeItem('userId')
+          sessionStorage.removeItem('token')
+          sessionStorage.removeItem('isAuthenticated')
+          sessionStorage.removeItem('customerId')
           router.push('/login')
         }
       }
@@ -171,13 +174,25 @@ export default {
 
     const fetchDietaryTags = async () => {
       try {
-        // Attempt to fetch tags from API
-        const response = await fetch('http://localhost:5004/inventory')
+        // Use the correct port (5006 instead of 5004)
+        const response = await fetch('http://localhost:5006/inventory')
+        
+        // Check if response is OK before trying to parse JSON
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`)
+        }
+        
         const data = await response.json()
 
         if (data.code === 200) {
           const allTags = data.data.flatMap((product) => product.dietaryTags || [])
-          availableDietaryTags.value = [...new Set(allTags)]
+          // Filter out any null or undefined values and ensure uniqueness
+          const uniqueTags = [...new Set(allTags.filter(tag => tag))]
+          
+          if (uniqueTags.length > 0) {
+            availableDietaryTags.value = uniqueTags
+          }
+          // If no tags found, we'll keep the default ones
         }
       } catch (error) {
         console.error('Error fetching dietary tags:', error)
@@ -204,10 +219,10 @@ export default {
     }
 
     const updateProfile = async () => {
-      const token = localStorage.getItem('token')
-      const userId = localStorage.getItem('userId')
+      const token = sessionStorage.getItem('token')
+      const customerId = sessionStorage.getItem('customerId')
 
-      if (!token || !userId) {
+      if (!token || !customerId) {
         console.error('User is not authenticated')
         router.push('/login')
         return
@@ -228,7 +243,7 @@ export default {
         }
 
         console.log('Sending update:', updateData)
-        const response = await customerApi.updateCustomerDetails(userId, updateData, token)
+        const response = await customerApi.updateCustomerDetails(customerId, updateData, token)
         console.log('Update response:', response)
 
         alert('Profile Updated Successfully!')
@@ -242,8 +257,9 @@ export default {
 
           if (error.response.status === 401) {
             alert('Your session has expired. Please login again.')
-            localStorage.removeItem('token')
-            localStorage.removeItem('userId')
+            sessionStorage.removeItem('token')
+            sessionStorage.removeItem('customerId')
+            sessionStorage.removeItem('isAuthenticated')
             router.push('/login')
             return
           }

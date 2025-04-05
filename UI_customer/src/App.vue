@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col min-h-screen bg-background">
     <Navbar @cart-updated="handleCartUpdate" />
-    <main class="flex-grow pt-4">
+    <main class="flex-grow">
       <RouterView @cart-updated="handleCartUpdate" />
     </main>
     <FooterComponent />
