@@ -76,7 +76,7 @@ def deal_with_delivery_status_change(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     elif method.routing_key == "delivery_cancellation.success":
-        # update old delivery with status of cancelled
+        # 1 update old delivery with status of cancelled
         logging.info("Received success message:", body.decode())
         # Parse the message
         message = json.loads(body.decode())
@@ -89,7 +89,7 @@ def deal_with_delivery_status_change(ch, method, properties, body):
             logging.error("Failed to update delivery with cancelled status: %s", delivery_response)
 
 
-        # create new delivery with new driver id 
+        # 2 create new delivery with new driver id 
         new_delivery_details = {
             "driver_id" : message["reassigned_driver_id"],
             "location" : message["location"],
@@ -104,7 +104,7 @@ def deal_with_delivery_status_change(ch, method, properties, body):
             logging.error("Failed to create new delivery: %s", new_delivery_response)
 
 
-        # update order with new delivery id
+        # 3 update order with new delivery id
         order_id = message["order_id"]
         new_delivery_id = new_delivery_response["data"]["id"]
         try:
@@ -113,6 +113,8 @@ def deal_with_delivery_status_change(ch, method, properties, body):
             logging.error(traceback.format_exc())
         if order_response["code"] not in range(200, 202):
             logging.error("Failed to update order with new delivery id: %s", order_response)
+
+        
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -314,7 +316,7 @@ def update_availability():
                 else:
                     deliveries = response.json()["data"]
                     for delivery in deliveries:
-                        if delivery["timeslot"] in occupied_timeslots and delivery["status"] != "Received by Customer":
+                        if delivery["timeslot"] in occupied_timeslots and delivery["status"] != "Received by Customer" and delivery["status"] != "Cancelled":
                             return jsonify({
                                 "code": 400,
                                 "message": "Driver is already assigned to a delivery in the occupied timeslot",
@@ -589,8 +591,12 @@ def get_assigned_deliveries():
         for i in range(len(response)):
             if "error" in orders[i].keys():
                 pass
+
             else:
-                response[i]["status"] = orders[i]["data"]["status"]
+                if response[i]["cancellation_status"] is not None:
+                    response[i]["status"] = response[i]["cancellation_status"]
+                else:                
+                    response[i]["status"] = orders[i]["data"]["status"]
             
             # orders.append(order)
             # if order["code"] == 404:
