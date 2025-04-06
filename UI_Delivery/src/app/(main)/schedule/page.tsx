@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useEffect, useState, useRef, use } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -30,9 +30,8 @@ import DateCard from "./DateCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { hasOverlappingTimeslot, doTimeslotsOverlap } from "./HelperFunctions";
-import { DateSchedule, TimeSlot } from "./HelperFunctions";
+import type { DateSchedule, TimeSlot } from "./HelperFunctions";
 import axios from "axios";
-import { time } from "console";
 
 // Time options from 08:00 to 22:00 in one-hour increments (in seconds)
 const TIME_OFFSETS = Array.from({ length: 15 }, (_, i) => (i + 8) * 3600);
@@ -62,18 +61,18 @@ export default function DateBasedDriverSchedule() {
     const driver_id = localStorage.getItem("driver_id") || "1";
 
     // Mock data instead of making an API call with undefined URL
-    const mockTimeslots = [
-      Math.floor(Date.now() / 1000), // Current time in Unix
-      Math.floor(Date.now() / 1000) + 3600, // 1 hour later
-      Math.floor(Date.now() / 1000) + 86400, // Tomorrow same time
-      Math.floor(Date.now() / 1000) + 86400 + 3600, // Tomorrow 1 hour later
-    ];
+    // const mockTimeslots = [
+    //   Math.floor(Date.now() / 1000), // Current time in Unix
+    //   Math.floor(Date.now() / 1000) + 3600, // 1 hour later
+    //   Math.floor(Date.now() / 1000) + 86400, // Tomorrow same time
+    //   Math.floor(Date.now() / 1000) + 86400 + 3600, // Tomorrow 1 hour later
+    // ];
 
     // Store original timeslots for tracking deletions
-    originalTimeslots.current = [...mockTimeslots];
+    // originalTimeslots.current = [...mockTimeslots];
 
-    const convertedSchedule = groupTimeSlotsByDate(mockTimeslots, true);
-    setExistingSchedule(convertedSchedule);
+    // const convertedSchedule = groupTimeSlotsByDate(mockTimeslots, true);
+    // setExistingSchedule(convertedSchedule);
 
     // If you need to make an actual API call, uncomment and provide a valid URL:
 
@@ -82,6 +81,11 @@ export default function DateBasedDriverSchedule() {
         `https://personal-6fbyxkeb.outsystemscloud.com/Driver/rest/DriverAPI/drivers/${driver_id}/timeslots`
       )
       .then((response) => {
+        console.log("Fetched data:", response.data);
+        if (Object.keys(response.data).length === 0) {
+          setExistingSchedule([]);
+          return;
+        }
         console.log(response.data.timeslots);
         originalTimeslots.current = [...response.data.timeslots];
         const convertedSchedule = groupTimeSlotsByDate(
@@ -543,7 +547,7 @@ export default function DateBasedDriverSchedule() {
         }
       });
 
-      // Check for overlapping timeslots
+      // Check for overlapping timeslots within new schedule
       for (let i = 0; i < day.timeSlots.length; i++) {
         for (let j = i + 1; j < day.timeSlots.length; j++) {
           if (doTimeslotsOverlap(day.timeSlots[i], day.timeSlots[j])) {
@@ -554,6 +558,34 @@ export default function DateBasedDriverSchedule() {
               )}`
             );
             break;
+          }
+        }
+      }
+
+      // Check for overlaps with existing schedule
+      const existingDay = existingSchedule.find(
+        (item) => item.date === day.date
+      );
+      if (existingDay) {
+        for (const newSlot of day.timeSlots) {
+          for (const existingSlot of existingDay.timeSlots) {
+            // Skip slots that are marked for deletion
+            if (
+              existingSlot.id &&
+              deletedTimeslots.current.has(existingSlot.id)
+            ) {
+              continue;
+            }
+
+            if (doTimeslotsOverlap(newSlot, existingSlot)) {
+              errors.push(
+                `New timeslot overlaps with existing timeslot on ${format(
+                  fromUnixTime(day.date),
+                  "MMMM d, yyyy"
+                )}`
+              );
+              break;
+            }
           }
         }
       }
@@ -573,6 +605,45 @@ export default function DateBasedDriverSchedule() {
       toast.error("Please fix all validation errors before saving", {
         description: validationErrors.join(", "),
       });
+      return;
+    }
+
+    // Additional check for overlaps between new and existing timeslots
+    let hasOverlaps = false;
+    for (const newDateSchedule of newSchedule) {
+      const existingDateSchedule = existingSchedule.find(
+        (item) => item.date === newDateSchedule.date
+      );
+
+      if (existingDateSchedule) {
+        for (const newSlot of newDateSchedule.timeSlots) {
+          for (const existingSlot of existingDateSchedule.timeSlots) {
+            // Skip slots that are marked for deletion
+            if (
+              existingSlot.id &&
+              deletedTimeslots.current.has(existingSlot.id)
+            ) {
+              continue;
+            }
+
+            if (doTimeslotsOverlap(newSlot, existingSlot)) {
+              hasOverlaps = true;
+              toast.error("Overlap detected", {
+                description: `New timeslot overlaps with existing timeslot on ${format(
+                  fromUnixTime(newDateSchedule.date),
+                  "MMMM d, yyyy"
+                )}`,
+              });
+              break;
+            }
+          }
+          if (hasOverlaps) break;
+        }
+      }
+      if (hasOverlaps) break;
+    }
+
+    if (hasOverlaps) {
       return;
     }
 

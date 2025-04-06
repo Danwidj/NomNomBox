@@ -73,6 +73,11 @@ export default function DeliveryList() {
         // });
 
         console.log(response);
+        if (response.status == 404) {
+          console.log("No deliveries found for this driver.");
+          setDeliveries([]);
+          return;
+        }
         const jsonResponse = await response.json();
         const data = jsonResponse.data;
 
@@ -93,15 +98,25 @@ export default function DeliveryList() {
   ): { timeRange: string; date: string } => {
     const date = new Date(unixTimestamp * 1000);
 
-    // Format hours as 1800-1900
-    const startHour = date.getHours();
-    // const endHour = startHour + 1;
+    // Get hours and minutes
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
 
-    // Pad with leading zeros and format as 1800-1900
-    const startFormatted = startHour.toString().padStart(2, "0") + "00";
-    const endFormatted = startHour.toString().padStart(2, "0") + "30";
+    // Format start time (the actual time from timestamp)
+    const startHourFormatted = hours.toString().padStart(2, "0");
+    const startMinutesFormatted = minutes.toString().padStart(2, "0");
+    const startTime = `${startHourFormatted}${startMinutesFormatted}`;
 
-    const timeRange = `${startFormatted}-${endFormatted}`;
+    // Calculate end time (30 minutes later)
+    const endDate = new Date(date.getTime() + 30 * 60 * 1000);
+    const endHourFormatted = endDate.getHours().toString().padStart(2, "0");
+    const endMinutesFormatted = endDate
+      .getMinutes()
+      .toString()
+      .padStart(2, "0");
+    const endTime = `${endHourFormatted}${endMinutesFormatted}`;
+
+    const timeRange = `${startTime}-${endTime}`;
 
     // Format date as DD/MM/YYYY
     const day = date.getDate().toString().padStart(2, "0");
@@ -119,7 +134,8 @@ export default function DeliveryList() {
     newStatus: DeliveryStatus,
     order_id: string,
     timeslot: number,
-    location: string
+    location: string,
+    driver_id: string = localStorage.getItem("driver_id") || ""
   ) => {
     try {
       // Update locally first for immediate UI feedback
@@ -143,6 +159,7 @@ export default function DeliveryList() {
           timeslot: timeslot,
           delivery_id: delivery_id,
           location: location,
+          driver_id: driver_id,
         }),
       });
     } catch (error) {
@@ -157,7 +174,8 @@ export default function DeliveryList() {
     delivery_id: number,
     order_id: string,
     timeslot: number,
-    location: string
+    location: string,
+    driver_id: string = localStorage.getItem("driver_id") || ""
   ) => {
     try {
       // Update status to "Pending Cancellation"
@@ -166,7 +184,8 @@ export default function DeliveryList() {
         "Pending Cancellation",
         order_id,
         timeslot,
-        location
+        location,
+        driver_id
       );
     } catch (error) {
       console.error("Error requesting cancellation:", error);
@@ -183,8 +202,9 @@ export default function DeliveryList() {
         return "Picked up by Driver";
       case "Picked up by Driver":
         return "Delivered by Driver";
-      case "Delivered by Driver":
-        return "Received by Customer";
+      // Remove the transition from Delivered to Received
+      // case "Delivered by Driver":
+      //   return "Received by Customer";
       default:
         return null;
     }
@@ -196,6 +216,7 @@ export default function DeliveryList() {
     const matchesTab = activeTab === "all" || delivery.status === activeTab;
     const matchesSearch =
       searchTerm === "" ||
+      delivery.delivery_id ||
       timeRange.includes(searchTerm) ||
       date.includes(searchTerm) ||
       delivery.location.toLowerCase().includes(searchTerm.toLowerCase());
@@ -369,6 +390,14 @@ export default function DeliveryList() {
                             </span>
                           </div>
                         )}
+                        {delivery.status === "Delivered by Driver" && (
+                          <div className="flex items-start gap-2 mt-2 w-full">
+                            <AlertCircle className="h-4 w-4 mt-1 text-blue-500" />
+                            <span className="text-sm text-blue-500">
+                              Waiting for customer to confirm receipt
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                     <CardFooter className="flex flex-wrap gap-2 pt-0">
@@ -394,8 +423,9 @@ export default function DeliveryList() {
                               "Pick Up"}
                             {delivery.status === "Picked up by Driver" &&
                               "Mark Delivered"}
-                            {delivery.status === "Delivered by Driver" &&
-                              "Confirm Receipt"}
+                            {/* Remove this condition since drivers can't mark as received */}
+                            {/* {delivery.status === "Delivered by Driver" &&
+                              "Confirm Receipt"} */}
                           </Button>
                         )}
 
@@ -409,7 +439,8 @@ export default function DeliveryList() {
                             requestCancellation(
                               delivery.delivery_id,
                               delivery.order_id,
-                              delivery.timeslot
+                              delivery.timeslot,
+                              delivery.location
                             )
                           }
                         >
