@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import requests  # Import the requests library
 import string
 import logging
+from datetime import datetime, timezone, timedelta
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -100,12 +101,51 @@ def process_message(ch, method, properties, body):
                 return
 
             email_success = send_email(customer_email, subject, body_text)
+        
+        elif routing_key == "delivery.assigned":
+        # driver_notification_message = {
+        #     "delivery_id": delivery_id,
+        #     "name": driver_response["name"],
+        #     "email": driver_response["email"],
+        #     "location": user_address,
+        #     "timeslot": desired_delivery_time,
+        #     "status": "Assigned to Driver",
+        # }
+            delivery_id = data.get("delivery_id")
+            driver_name = data.get("name")
+            driver_email = data.get("email")
+            location = data.get("location")
+            timeslot = data.get("timeslot")
+            status = data.get("status")
+            subject= f"Delivery Assigned - Delivery #{delivery_id}"
+            # Define Singapore timezone (UTC+8)
+            sg_timezone = timezone(timedelta(hours=8))
+
+            # Convert the Unix timestamp to a datetime object in SG time
+            formatted_timeslot = datetime.fromtimestamp(int(timeslot), tz=sg_timezone).strftime('%A, %d %B %Y at %I:%M %p')
+
+            # Use in email body
+            body_text = f"""
+            Dear {driver_name},
+            A delivery with ID {delivery_id} has been assigned to you! 🚚
+            Here are the details:
+            - Delivery ID: {delivery_id}
+            - Location: {location}
+            - Timeslot: {formatted_timeslot}
+            """
+            email_success = send_email(customer_email, subject, body_text)
+            if email_success:
+                logging.info(f"Email sent successfully to {driver_email}")
+            else:
+                logging.error(f"Failed to send email to {driver_email}")
+
+
+
 
         elif routing_key in ( #Change condition of key routing here
             "delivery.pickedup",
             "delivery.delivered",
             "delivery.received",
-            "delivery.assigned",
         ):
             # Process delivery status updates
             delivery_id = data.get("delivery_id")

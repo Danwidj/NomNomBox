@@ -37,6 +37,7 @@ schedule_URL = "http://schedule:5001"
 order_URL = "http://order:5003"
 delivery_URL = "http://delivery:5000"
 driver_availability_URL = "https://personal-6fbyxkeb.outsystemscloud.com/Driver/rest/DriverAPI/drivers/timeslots/"
+driver_URL = "https://personal-6fbyxkeb.outsystemscloud.com/DriverService/rest/v1/drivers/"
 
 
 # RabbitMQ
@@ -66,6 +67,7 @@ def deal_with_delivery_status_change(ch, method, properties, body):
             delivery_id = message["delivery_id"]
             try:
                 delivery_response = invoke_http(delivery_URL + "/delivery/" + str(delivery_id), json={ "cancellation_status": "Escalated"}, method='PATCH')
+                
             except Exception as e:
                 return jsonify({
                     "code": 500,
@@ -114,6 +116,33 @@ def deal_with_delivery_status_change(ch, method, properties, body):
                 logging.error(traceback.format_exc())
             if order_response["code"] not in range(200, 202):
                 logging.error("Failed to update order with new delivery id: %s", order_response)
+            # 4 send notification message to old driver
+            #TODO
+            
+            # RabbitMQManager.channel.basic_publish(
+            #     exchange=exchange_name,
+            #     routing_key="delivery.cancelled",
+            #     body=notification_message,
+            #     properties=pika.BasicProperties(delivery_mode=2),
+            # )
+
+            # 5 send notification message to new driver
+            notification_message = {
+                "status": "Assigned to Driver",
+                "email": message["email"],
+                "timeslot": message["timeslot"],
+                "name": message["name"],
+                "delivery_id": delivery_id,
+                "location": message["location"],
+            }
+            RabbitMQManager.channel.basic_publish(
+                exchange=exchange_name,
+                routing_key="delivery.assigned",
+                body=notification_message,
+                properties=pika.BasicProperties(delivery_mode=2),
+            )
+
+
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -208,12 +237,30 @@ def process_place_delivery_request(delivery_request):
                 "error": order
             }), 500
         
+        # 5 get driver information
+        driver_response = requests.get(driver_URL + str(assigned_driver_id) + "/info", method='GET')
+        if driver_response["code"] not in range(200, 202):
+            return jsonify({
+                "code": 500,
+                "message": "Failed to get driver information",
+                "error": driver_response
+            }), 500
+        
+
 
         if RabbitMQManager.connection is None or not amqp_lib.is_connection_open(RabbitMQManager.connection):
             logging.info("attempting to connect to amqp")
             RabbitMQManager.start(rabbit_host, rabbit_port, exchange_name, exchange_type)
-            
+        
 
+        driver_notification_message = {
+            "delivery_id": delivery_id,
+            "name": driver_response["name"],
+            "email": driver_response["email"],
+            "location": user_address,
+            "timeslot": desired_delivery_time,
+            "status": "Assigned to Driver",
+        }
         
         # 5 inform notification via amqp
         # time is in unix timestamp    
@@ -234,7 +281,7 @@ def process_place_delivery_request(delivery_request):
         RabbitMQManager.channel.basic_publish(
             exchange=exchange_name,
             routing_key="delivery.assigned",
-            body=notification_message,
+            body=driver_notification_message,
             properties=pika.BasicProperties(delivery_mode=2),
         )
         return jsonify({
@@ -454,7 +501,7 @@ def update_delivery_status(delivery_id):
                     "code": 200,
                     "message": "Delivery status updated to pending cancellation"
                 }), 200
-
+            #  if other statuses...
             # update order with new status
             update_response = update_order(order_id=order_id, delivery_id=delivery_id, status=status)
             logging.info("update_response: %s", update_response)
