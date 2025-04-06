@@ -65,7 +65,7 @@ const router = createRouter({
       component: Success,
     },
     {
-      path: '/schedule-delivery',
+      path: '/schedule-delivery/:orderId',
       name: 'ScheduleDelivery',
       component: ScheduleDelivery,
       meta: { requiresAuth: true }
