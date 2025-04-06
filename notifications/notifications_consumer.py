@@ -139,7 +139,7 @@ def process_message(ch, method, properties, body):
             - Location: {location}
             - Timeslot: {formatted_timeslot}
             """
-            email_success = send_email(customer_email, subject, body_text)
+            email_success = send_email(driver_email, subject, body_text)
             if email_success:
                 logging.info(f"Email sent successfully to {driver_email}")
             else:
@@ -163,20 +163,20 @@ def process_message(ch, method, properties, body):
 
             subject = f"Delivery Status Update - Delivery #{order_id}"
             body_text = f"""
-  👋 Dear Customer,
+            👋 Dear Customer,
 
-  🚚 Exciting news! Your delivery for order #{order_id} has been updated!
+            🚚 Exciting news! Your delivery for order #{order_id} has been updated!
 
-  The current status is: {status} 🎉
+            The current status is: {status} 🎉
 
-  We're working hard to get your delicious meal kit to you as quickly as possible. We'll keep you posted on any further updates.
+            We're working hard to get your delicious meal kit to you as quickly as possible. We'll keep you posted on any further updates.
 
-  Thank you for your order! 💖
+            Thank you for your order! 💖
 
-  Warm regards,
+            Warm regards,
 
-  The NomNomBox Team 📦
-  """
+            The NomNomBox Team 📦
+            """
             # template = string.Template(DELIVERY_PICKEDUP_TEMPLATE) # set template
             # body_text = template.substitute(delivery_id=delivery_id,status=status)
 
