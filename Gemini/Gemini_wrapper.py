@@ -122,7 +122,7 @@ def generate_recommendation():
         return jsonify({"prompt": data["prompt"], "response": reply['response'], "recommended meal-kit": reply['recommended meal-kit']}) 
     
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error':str(e)}), 400
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 

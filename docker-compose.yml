@@ -212,20 +212,33 @@ services:
       - inventory
       - chathistory
 
-  # notifications_consumer:
-  #   image: NomNomBox/notifications:latest
-  #   build:
-  #     context: ./notifications
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     - RABBITMQ_HOST=rabbitmq
-  #     - RABBITMQ_PORT=5672
-  #     - RABBITMQ_EXCHANGE=notification_topic
-  #     - NOTIFICATIONS_QUEUE=notification_queue
-  #   depends_on:
-  #     - rabbitmq
-  #     - rabbitmq_setup
-  #   command: python notifications_consumer.py
+  gemini:
+    image: NomNomBox/gemini:latest
+    build:
+      context: ./Gemini
+      dockerfile: Dockerfile
+    ports:
+      - "5009:5009"
+    volumes:
+      - ./Gemini/nomnombox-8bf47.json:/app/nomnombox-8bf47.json
+    depends_on:
+      - send_query
+      - chathistory
+
+# notifications_consumer:
+#   image: NomNomBox/notifications:latest
+#   build:
+#     context: ./notifications
+#     dockerfile: Dockerfile
+#   environment:
+#     - RABBITMQ_HOST=rabbitmq
+#     - RABBITMQ_PORT=5672
+#     - RABBITMQ_EXCHANGE=notification_topic
+#     - NOTIFICATIONS_QUEUE=notification_queue
+#   depends_on:
+#     - rabbitmq
+#     - rabbitmq_setup
+#   command: python notifications_consumer.py
 
 networks:
   default:
