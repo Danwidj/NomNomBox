@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -19,13 +19,15 @@ import {
 const data = {
   versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
   navMain: [
-    { title: "Manage Deliveries", url: "/deliveries", isActive: true },
+    { title: "Manage Deliveries", url: "/deliveries"},
     { title: "Manage Availability", url: "/schedule" },
   ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
+  const pathname = usePathname();
+  
   return (
     <Sidebar {...props}>
       <SidebarHeader className="py-5 text-center font-bold">
@@ -37,7 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
-                isActive={item.isActive}
+                isActive={pathname === item.url}
                 onClick={() => router.push(item.url)}
               >
                 <a>{item.title}</a>
