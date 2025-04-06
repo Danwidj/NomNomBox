@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -94,7 +94,10 @@ def get_meal_recommendations(customer_id):
         
         # Get the chatbot response data
         chatbot_data = chatbot_response.json()
-        current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S UTC+8")
+        
+        # Create a proper timezone-aware datetime object for SGT (UTC+8)
+        sgt_tz = timezone(timedelta(hours=8))
+        current_time = datetime.now(sgt_tz).strftime("%Y-%m-%dT%H:%M:%S+08:00")
         
         # Save both prompt and response in a single document
         chat_response = requests.post(

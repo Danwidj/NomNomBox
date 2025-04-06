@@ -46,14 +46,30 @@ def parse_timestamp(timestamp_str):
     try:
         if not timestamp_str:
             return get_sgt_time()
+        
+        # Try the new format first (ISO 8601 with timezone)
+        try:
+            from dateutil import parser
+            created_at = parser.parse(timestamp_str)
+            # Ensure timezone is set to SGT
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone(timedelta(hours=8)))
+            return created_at
+        except ImportError:
+            # If dateutil is not available, try manual parsing
+            if '+08:00' in timestamp_str:
+                # New format with explicit timezone
+                created_at = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S+08:00")
+            else:
+                # Old format with UTC+8 as text
+                created_at = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S UTC+8")
             
-        created_at = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S UTC+8")
-        # Ensure the datetime is timezone-aware
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone(timedelta(hours=8)))
-        return created_at
-    except (ValueError, TypeError):
-        logging.warning(f"Invalid timestamp format: {timestamp_str}, using current time")
+            # Ensure the datetime is timezone-aware
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone(timedelta(hours=8)))
+            return created_at
+    except (ValueError, TypeError) as e:
+        logging.warning(f"Invalid timestamp format: {timestamp_str}, using current time. Error: {e}")
         return get_sgt_time()
 
 # ===== Request Logging =====
@@ -83,12 +99,33 @@ def get_chat_history(customer_id):
         chat_messages = []
         for message in messages:
             message_data = message.to_dict()
+            # Convert timestamp to SGT explicitly for display
+            created_at = message_data.get('created_at')
+            if created_at:
+                # If it's a Firestore timestamp
+                if hasattr(created_at, 'seconds'):
+                    # Convert to datetime - Firestore timestamps can be converted to datetime directly
+                    created_at_dt = created_at.astimezone(timezone(timedelta(hours=8)))
+                    created_at_str = created_at_dt.strftime("%Y-%m-%dT%H:%M:%S+08:00")
+                # If it's already a datetime
+                elif isinstance(created_at, datetime):
+                    if created_at.tzinfo is None:
+                        created_at = created_at.replace(tzinfo=timezone.utc)
+                    created_at = created_at.astimezone(timezone(timedelta(hours=8)))
+                    created_at_str = created_at.strftime("%Y-%m-%dT%H:%M:%S+08:00")
+                else:
+                    # If it's something else (string, etc)
+                    logging.warning(f"Unexpected timestamp type: {type(created_at)}")
+                    created_at_str = str(created_at)
+            else:
+                created_at_str = None
+            
             chat_messages.append({
                 'role': message_data.get('role', 'model'),
                 'prompt': message_data.get('prompt', ''),
                 'response': message_data.get('response', ''),
                 'recommended_meal_kits': message_data.get('recommended_meal_kits', []),
-                'created_at': message_data.get('created_at').isoformat() if message_data.get('created_at') else None
+                'created_at': created_at_str
             })
         
         logging.info(f"Returning {len(chat_messages)} messages for customer: {customer_id}")
