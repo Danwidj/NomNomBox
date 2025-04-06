@@ -431,7 +431,7 @@
 </template>
 
 <script>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 export default {
@@ -448,6 +448,7 @@ export default {
     })
     const orders = ref([])
     const activeTab = ref('pending') // Default to pending orders tab
+    const pollingInterval = ref(null)
 
     // Compute sorted orders by date (newest first)
     const sortedOrders = computed(() => {
@@ -537,10 +538,35 @@ export default {
           // Set active tab to pending
           activeTab.value = 'pending'
         }
+        
+        // Start polling for order status updates
+        pollingInterval.value = startOrderStatusPolling()
       } catch (error) {
         console.error('Failed to load profile:', error)
       }
     })
+    
+    // Clean up polling interval when component is unmounted
+    onUnmounted(() => {
+      if (pollingInterval.value) {
+        clearInterval(pollingInterval.value)
+        console.log('Order status polling stopped')
+      }
+    })
+    
+    // Start polling for order status updates
+    const startOrderStatusPolling = () => {
+      // Poll for order updates every 30 seconds
+      const interval = setInterval(async () => {
+        const customerId = localStorage.getItem('userId')
+        if (customerId) {
+          console.log('Polling for order status updates...')
+          await fetchOrderHistory(customerId)
+        }
+      }, 30000) // 30 seconds
+      
+      return interval
+    }
     
     const fetchUserData = async (customerId, token) => {
       try {
@@ -609,8 +635,9 @@ export default {
         const data = await response.json()
 
         if (data.code === 200) {
-          orders.value = data.data.map(order => {
+          const newOrders = data.data.map(order => {
             let scheduledDelivery = null;
+            let currentStatus = order.status;
             
             // If the order has a deliveryTime field (Unix timestamp), convert it to a Date
             if (order.deliveryTime) {
@@ -623,23 +650,121 @@ export default {
               scheduledDelivery = new Date(parseInt(localDeliveryTime) * 1000);
             }
             
-            // Check localStorage for updated status
+            // Check localStorage for updated status and compare with server status
             const localStatus = localStorage.getItem(`order_${order.orderId}_status`);
-            const status = localStatus || order.status;
+            
+            // If server status is more advanced in the delivery workflow than local status, use server status
+            if (shouldUseServerStatus(currentStatus, localStatus)) {
+              // Use server status as it's more current
+              if (localStatus) {
+                // Update localStorage to match server
+                localStorage.setItem(`order_${order.orderId}_status`, currentStatus);
+              }
+            } else if (localStatus) {
+              // Use localStorage status if it exists and is more advanced
+              currentStatus = localStatus;
+            }
+            
+            // If order has deliveryId, check for delivery status
+            if (order.deliveryId) {
+              checkDeliveryStatus(order.deliveryId, order.orderId);
+            }
             
             return {
               ...order,
               scheduledDelivery,
-              status
+              status: currentStatus
             };
           });
           
-          console.log('Orders loaded:', orders.value);
+          // Update orders, but preserve existing data that might not be in the new data
+          orders.value = mergeOrderData(orders.value, newOrders);
+          console.log('Orders updated:', orders.value);
         } else {
           console.error('No orders found for this user.')
         }
       } catch (error) {
         console.error('Error fetching order history:', error)
+      }
+    }
+    
+    // Helper function to determine which status to use (server or localStorage)
+    const shouldUseServerStatus = (serverStatus, localStatus) => {
+      if (!localStatus) return true;
+      if (!serverStatus) return false;
+      
+      // Define order of statuses in the delivery workflow (from earliest to latest)
+      const statusOrder = [
+        'pending',
+        'paid',
+        'assigned to driver',
+        'picked up by driver',
+        'delivered by driver',
+        'received by customer'
+      ];
+      
+      const serverIndex = statusOrder.indexOf(serverStatus.toLowerCase());
+      const localIndex = statusOrder.indexOf(localStatus.toLowerCase());
+      
+      // If server status is further along in the process, use it
+      return serverIndex > localIndex;
+    }
+    
+    // Function to merge existing order data with new data
+    const mergeOrderData = (existingOrders, newOrders) => {
+      // Create a map of existing orders for quick lookup
+      const orderMap = new Map();
+      existingOrders.forEach(order => {
+        orderMap.set(order.orderId, order);
+      });
+      
+      // Update the map with new order data
+      newOrders.forEach(newOrder => {
+        const existingOrder = orderMap.get(newOrder.orderId);
+        if (existingOrder) {
+          // Merge properties, prioritizing newer/more advanced status
+          orderMap.set(newOrder.orderId, {
+            ...existingOrder,
+            ...newOrder,
+            status: shouldUseServerStatus(newOrder.status, existingOrder.status) 
+              ? newOrder.status 
+              : existingOrder.status
+          });
+        } else {
+          // This is a new order
+          orderMap.set(newOrder.orderId, newOrder);
+        }
+      });
+      
+      // Convert map back to array
+      return Array.from(orderMap.values());
+    }
+    
+    // Function to directly check delivery status from the delivery microservice
+    const checkDeliveryStatus = async (deliveryId, orderId) => {
+      try {
+        const response = await fetch(`http://localhost:5000/delivery/${deliveryId}`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.code === 200 && data.data) {
+          // Check if delivery status is updated
+          const deliveryData = data.data;
+          
+          // If the order is marked as delivered on the driver side
+          if (deliveryData.status === 'Delivered by Driver' || deliveryData.status === 'Received by Customer') {
+            // Update localStorage with the latest status
+            localStorage.setItem(`order_${orderId}_status`, deliveryData.status);
+            
+            // Find and update the order directly in the orders array
+            const orderIndex = orders.value.findIndex(o => o.orderId === orderId);
+            if (orderIndex !== -1) {
+              orders.value[orderIndex].status = deliveryData.status;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking delivery status for delivery ${deliveryId}:`, error);
       }
     }
 
