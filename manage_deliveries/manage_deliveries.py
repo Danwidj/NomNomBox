@@ -58,6 +58,9 @@ logging.basicConfig(level=logging.INFO)
 
 # Only subscribed to the main queue, and only acknowledge cancelled and esccalated messages
 def deal_with_delivery_status_change(ch, method, properties, body):
+    if RabbitMQManager.connection is None or not amqp_lib.is_connection_open(RabbitMQManager.connection):
+        logging.info("attempting to connect to amqp")
+        RabbitMQManager.start(rabbit_host, rabbit_port, exchange_name, exchange_type)
     with app.app_context():
         if method.routing_key == "delivery_cancellation.escalated":
             # Handle the escalation message
@@ -118,6 +121,8 @@ def deal_with_delivery_status_change(ch, method, properties, body):
                 logging.error("Failed to update order with new delivery id: %s", order_response)
             # 4 send notification message to old driver
             #TODO
+
+            
             
             # RabbitMQManager.channel.basic_publish(
             #     exchange=exchange_name,
@@ -126,15 +131,22 @@ def deal_with_delivery_status_change(ch, method, properties, body):
             #     properties=pika.BasicProperties(delivery_mode=2),
             # )
 
+            # get driver information
+            driver_response = requests.get(driver_URL + str(message["reassigned_driver_id"]) + "/info")
+            if driver_response.status_code not in range(200, 202):
+                logging.error("Failed to get driver information: %s", driver_response.json())
+            driver_response = driver_response.json()
+
             # 5 send notification message to new driver
             notification_message = {
                 "status": "Assigned to Driver",
-                "email": message["email"],
+                "email": driver_response["email"],
                 "timeslot": message["timeslot"],
-                "name": message["name"],
+                "name": driver_response["name"],
                 "delivery_id": delivery_id,
                 "location": message["location"],
             }
+            notification_message = json.dumps(notification_message)
             RabbitMQManager.channel.basic_publish(
                 exchange=exchange_name,
                 routing_key="delivery.assigned",
@@ -238,13 +250,15 @@ def process_place_delivery_request(delivery_request):
             }), 500
         
         # 5 get driver information
-        driver_response = requests.get(driver_URL + str(assigned_driver_id) + "/info", method='GET')
-        if driver_response["code"] not in range(200, 202):
+        driver_response = requests.get(driver_URL + str(assigned_driver_id) + "/info")
+        if driver_response.status_code not in range(200, 202):
             return jsonify({
                 "code": 500,
                 "message": "Failed to get driver information",
-                "error": driver_response
+                "error": driver_response.json()
             }), 500
+        
+        driver_response = driver_response.json()
         
 
 
@@ -261,7 +275,7 @@ def process_place_delivery_request(delivery_request):
             "timeslot": desired_delivery_time,
             "status": "Assigned to Driver",
         }
-        
+        driver_notification_message = json.dumps(driver_notification_message)
         # 5 inform notification via amqp
         # time is in unix timestamp    
         #convert order dict to string
