@@ -73,13 +73,13 @@ services:
       - redis
       - kafka
 
-  # driver_frontend:
-  #   image: NomNomBox/driver_frontend:latest
-  #   build:
-  #     context: ./UI_Delivery
-  #     dockerfile: dockerfile
-  #   ports:
-  #     - "3000:3000"
+  driver_frontend:
+    image: NomNomBox/driver_frontend:latest
+    build:
+      context: ./UI_Delivery
+      dockerfile: dockerfile
+    ports:
+      - "3000:3000"
 
   order:
     image: NomNomBox/order:latest

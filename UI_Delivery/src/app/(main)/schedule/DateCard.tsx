@@ -159,7 +159,7 @@ export default function DateCard({
                       slot={slot}
                       date={date}
                       index={index}
-                      updateTimeSlot={onUpdateTimeSlot}
+                      updateTimeSlot={onUpdateTimeSlot ?? (() => {})}
                       removeTimeSlot={onRemoveTimeSlot}
                       allTimeSlots={timeSlots}
                     />
