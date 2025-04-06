@@ -82,18 +82,24 @@ def process_message(ch, method, properties, body):
 
             subject = f"Payment Successful - Order #{order_id}"
             body_text = f"""
-  🎉 Your Meal Kit Order #{order_id} is Confirmed! 🎉
+                Hi there,
 
-  Woohoo! 🥳 We're absolutely thrilled to let you know that your payment was successful! 💳✅
+                🎉 Your Meal Kit Order #{order_id} is confirmed! 🎉
 
-  Thank you so much for choosing NomNomBox! 💖 We're already busy whipping up your delicious meal kit with love and the freshest ingredients. 🥦🥕🍅 We'll keep you updated every step of the way, so you know exactly when to expect your yummy delivery! 🚚💨
+                We're excited to let you know that your payment was successful. Thank you so much for choosing NomNomBox! 💖  
+                Our team is now preparing your meal kit with the freshest ingredients — made with love. 🥦🥕🍅
 
-  Get ready to say NomNom! 😋🍴
+                📅 Next Step Required:  
+                Please go to your Profile Page and click on the "Orders" tab.  
+                From there, select a delivery date for this order so we can schedule it accordingly.
 
-  Sending you our warmest wishes,
+                We’ll keep you updated every step of the way and notify you once your meal kit is out for delivery. 🚚✨
 
-  The NomNomBox Team 💌
-  """
+                Thanks again and get ready to say *NomNom*! 😋🍴
+
+                Warm regards,  
+                The NomNomBox Team 💌
+            """
 
             if not customer_email:
                 print(f"No email address found for customer_id. Skipping.")

@@ -8,6 +8,7 @@ import EditProfile from '../views/EditProfile.vue'
 import AuthView from '@/views/AuthView.vue'
 import SignUpView from '@/views/SignUpView.vue'
 import Success from "@/views/Success.vue"
+import ScheduleDelivery from '@/views/ScheduleDelivery.vue'
 import { isAuthenticated, initAuth } from '@/stores/auth'
 
 const router = createRouter({
@@ -63,6 +64,12 @@ const router = createRouter({
       name: 'success',
       component: Success,
     },
+    {
+      path: '/schedule-delivery',
+      name: 'ScheduleDelivery',
+      component: ScheduleDelivery,
+      meta: { requiresAuth: true }
+    }
   ],
 })
 
