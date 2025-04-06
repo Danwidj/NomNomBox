@@ -368,7 +368,7 @@
               </p>
             </div>
             
-            <div class="mt-2 sm:mt-0">
+            <div class="mt-2 sm:mt-0 flex flex-col sm:items-end gap-2">
               <span 
                 :class="[
                   'px-3 py-1 rounded-full text-sm font-medium',
@@ -380,6 +380,19 @@
               >
                 {{ order.status }}
               </span>
+              
+              <!-- Add Order Received Button for Delivered by Driver status -->
+              <button 
+                v-if="shouldShowDeliveryButton(order)"
+                @click="confirmDelivery(order.orderId)"
+                class="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center gap-1 mt-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Order Received
+              </button>
             </div>
           </div>
           
@@ -406,7 +419,7 @@
               </div>
             </div>
           </div>
-
+        
           <!-- Order Items -->
           <div class="border-t border-border pt-4">
             <p class="font-medium mb-4">Order Items:</p>
@@ -486,21 +499,27 @@ export default {
 
     // Filter orders for active tab
     const activeOrders = computed(() => {
-      return sortedOrders.value.filter(order => 
-        (order.status.toLowerCase() === 'paid' && (order.scheduledDelivery || localStorage.getItem(`order_${order.orderId}_deliveryTime`))) || 
-        order.status === 'Assigned To Driver' ||
-        order.status === 'Picked up by Driver' ||
-        order.status === 'Delivered by Driver'
-      )
-    })
+      return sortedOrders.value.filter(order => {
+        // Convert status to lowercase for case-insensitive comparison
+        const orderStatus = order.status ? order.status.toLowerCase() : '';
 
-    // Filter orders for delivered tab
+        return (orderStatus === 'paid' && 
+               (order.scheduledDelivery || localStorage.getItem(`order_${order.orderId}_deliveryTime`))) || 
+               orderStatus === 'assigned to driver' ||
+               orderStatus === 'picked up by driver';
+      });
+    });
+
     const deliveredOrders = computed(() => {
-      return sortedOrders.value.filter(order => 
-        order.status.toLowerCase() === 'delivered' ||
-        order.status.toLowerCase() === 'received by customer'
-      )
-    })
+      return sortedOrders.value.filter(order => {
+        // Convert status to lowercase for case-insensitive comparison
+        const orderStatus = order.status ? order.status.toLowerCase() : '';
+
+        return orderStatus === 'delivered' ||
+               orderStatus === 'delivered by driver' ||
+               orderStatus === 'received by customer';
+      });
+    });
 
     // Helper to get JavaScript Date object from various timestamp formats
     const getDateFromTimestamp = (timestamp) => {
