@@ -210,7 +210,7 @@
     </div>
   </template>
   
-  <script>
+<script>
   import { ref, onMounted } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   
@@ -462,12 +462,44 @@
           return
         }
         
+        const deliveryData = {
+          user_id: userId,
+          order_id: orderId.value,
+          delivery_time: selectedSlot.value.unixStart,
+        }
+        
         try {
-          // Set up mock delivery response data
-          const mockDeliveryResponse = {
-            id: `mock-delivery-${Date.now()}`,
-            status: 'Assigned To Driver'
+          console.log('Sending delivery request:', deliveryData)
+          
+          // Make the actual API call to schedule the delivery
+          const response = await fetch('http://localhost:5000/place_delivery_request', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(deliveryData),
+          })
+          
+          const result = await response.json()
+          
+          if (response.status !== 200 || result.code !== 200) {
+            scheduleError.value = result.message || 'Failed to schedule delivery. Please try another slot.'
+            console.error('Delivery scheduling failed:', result)
+            return
           }
+          
+          // If we get here, the delivery was scheduled successfully
+          console.log('Delivery scheduled successfully:', result)
+          
+          // Store the delivery ID if it's in the response
+          if (result.data && result.data.id) {
+            localStorage.setItem(`order_${orderId.value}_deliveryId`, result.data.id)
+          }
+          
+          // Also store the delivery time and status in localStorage as a fallback
+          localStorage.setItem(`order_${orderId.value}_deliveryTime`, selectedSlot.value.unixStart.toString())
+          localStorage.setItem(`order_${orderId.value}_status`, 'Assigned To Driver')
           
           // Create delivery date for display
           const deliveryDate = new Date(selectedSlot.value.unixStart * 1000)
@@ -479,21 +511,14 @@
           })
           formattedDeliveryTime.value = `${selectedSlot.value.startTime} - ${selectedSlot.value.endTime}`
           
-          // Store delivery information in localStorage
-          localStorage.setItem(`order_${orderId.value}_deliveryTime`, selectedSlot.value.unixStart.toString())
-          localStorage.setItem(`order_${orderId.value}_status`, 'Assigned To Driver')
-          
-          // Simulate order update
-          console.log(`Simulated delivery scheduled for Order #${orderId.value} at timestamp ${selectedSlot.value.unixStart}`);
-          
           // Show success modal
           showSuccessModal.value = true
           
-          // Temporary solution while the backend issue is fixed
+          // Redirect after 5 seconds
           setTimeout(() => {
             showSuccessModal.value = false
             router.push('/profile')
-          }, 5000);
+          }, 5000)
         } catch (error) {
           console.error('Error scheduling delivery:', error)
           scheduleError.value = 'An error occurred during scheduling. Please try again later.'
