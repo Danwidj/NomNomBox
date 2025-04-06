@@ -52,7 +52,7 @@ def create_queue(channel, exchange_name, queue_name, routing_key, args=None):
 dlq_args={
     "x-dead-letter-exchange": "delivery_cancellation_topic",
     "x-dead-letter-routing-key": "dlq",
-    "x-message-ttl": 300000,
+    "x-message-ttl": 60000,
 }
 while True:
     try:
@@ -87,14 +87,7 @@ while True:
         )
 
         # FOR DELIVERY CANCELLATION
-        create_queue(
-            channel=channel,
-            exchange_name="delivery_cancellation_topic",
-            queue_name="delivery_cancellation_queue",
-            routing_key="delivery_cancellation.*",
-            args=dlq_args,
-        )
-        
+        # channel.queue_delete(queue='delivery_cancellation_queue')
         create_queue(
             channel=channel,
             exchange_name="delivery_cancellation_topic",
@@ -102,8 +95,32 @@ while True:
             routing_key="dlq",
         )
 
+        create_queue(
+            channel=channel,
+            exchange_name="delivery_cancellation_topic",
+            queue_name="delivery_cancellation_pending_queue",
+            routing_key="delivery_cancellation.pending",
+            args=dlq_args,
+        )
+
+        create_queue(
+            channel=channel,
+            exchange_name="delivery_cancellation_topic",
+            queue_name="delivery_cancellation_general_queue",
+            routing_key="delivery_cancellation.success",
+        )
+
+        create_queue(
+            channel=channel,
+            exchange_name="delivery_cancellation_topic",
+            queue_name="delivery_cancellation_general_queue",
+            routing_key="delivery_cancellation.escalated",
+        )
+        
+
         break
     except pika.exceptions.AMQPConnectionError:
         print("AMQP connection error. Retrying in 10 seconds...")
         time.sleep(10)       
         continue
+

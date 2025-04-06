@@ -102,10 +102,12 @@ def check_driver_delivery_assignment(driver_id):
 
 def get_deliveries_by_driver_id(driver_id):
     deliveries = invoke_http(delivery_URL + "/delivery?driver_id=" + str(driver_id), method='GET')
+    if deliveries["code"] not in range(200, 300):
+        return deliveries
     deliveries = deliveries["data"]["deliveries"]
     for delivery in deliveries:
         delivery["timeslot"] = convert_to_unix(delivery["timeslot"])
-    return deliveries
+    return { "code": 200, "data": { "deliveries": deliveries }}
 
 def get_orders(order_ids):
     order = invoke_http(order_URL + "/api/orders", json=order_ids, method='POST')

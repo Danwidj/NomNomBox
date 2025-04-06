@@ -90,8 +90,11 @@ def start_consuming(
 
           except pika.exceptions.ChannelClosedByBroker as exception:
                 message = f"Queue {queue_name} not found."
-                connection.close()
-                raise Exception(message) from exception
+                time.sleep(5)
+                continue
+               #  connection.close()
+               #  raise Exception(message) from exception
+               
 
           except pika.exceptions.ConnectionClosedByBroker:
                 print("Connection closed. Try to reconnect...")

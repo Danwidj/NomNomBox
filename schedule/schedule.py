@@ -16,6 +16,8 @@ import logging
 from KafkaManager import KafkaManager
 import amqp_lib
 import requests
+import pika
+from RabbitMQManager import RabbitMQManager
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
@@ -121,15 +123,19 @@ thread = threading.Thread(target=consuming, daemon=True)
 thread.start()
 
 
+class DriverNotFoundException(Exception):
+    """Exception raised when no drivers are available for a timeslot."""
+    pass
+
 def assign_driver_to_timeslot(desired_timeslot):
     assignable_drivers = db.session.scalars(db.select(Schedule).filter(Schedule.timeslot == desired_timeslot, Schedule.assigned == False)).all()
     if assignable_drivers == []:
-        raise Exception("No drivers are available for the desired timeslot.")
+        raise DriverNotFoundException("No drivers are available for the desired timeslot.")
     
     random.shuffle(assignable_drivers)
     driver_found = False
     for driver in assignable_drivers:
-        if redis_utils.lock_schedule(driver.id):
+        if redis_utils.lock_schedule(driver.id): #if can acquire lock, then assign driver
             driver_found = True
             assigned_driver = driver
             break
@@ -137,7 +143,7 @@ def assign_driver_to_timeslot(desired_timeslot):
     
     if driver_found == False:
         print("redis lock working")
-        raise Exception("No drivers are available for the desired timeslot.")
+        raise DriverNotFoundException("No drivers are available for the desired timeslot.")
 
         
 
@@ -150,6 +156,8 @@ def assign_driver_to_timeslot(desired_timeslot):
         return assigned_driver.json()
     except Exception as e:
         raise e
+    finally:
+        redis_utils.unlock_schedule(assigned_driver.id)
 
 
 # Only subscribed to the DLQ, publish to main queue
@@ -157,71 +165,90 @@ def assign_driver_to_timeslot(desired_timeslot):
 def find_new_driver(ch, method, properties, body):
     # message variables: order id, status, timeslot, driver id    
     message = body.decode()
-    logging.info("Received message from RabbitMQ:", body.decode())
+    logging.info("Received message from RabbitMQ: %s", body.decode())
+    logging.info("Received at %s", datetime.now(timezone.utc))
     data = json.loads(message)
     
     with app.app_context():
         try:
-            timeslot = data["timeslot"]
+            if RabbitMQManager.connection is None or not amqp_lib.is_connection_open(RabbitMQManager.connection):
+                logging.info("attempting to connect to amqp")
+                RabbitMQManager.start("rabbitmq", 5672, "delivery_cancellation_topic", "topic")
+            unix_timeslot = data["timeslot"]
             # find other drivers that are available for the same timeslot
+            timeslot = datetime.fromtimestamp(int(unix_timeslot), timezone.utc)
             driver_assignment = assign_driver_to_timeslot(timeslot)
-            # if found, remove the availability
-            timeslot = datetime.fromtimestamp(int(timeslot), timezone.utc)
-            db.session.query(Schedule).filter(Schedule.timeslot == timeslot, Schedule.driver_id == data["driver_id"] and Schedule.timeslot == timeslot).delete() 
+            logging.info("Driver has been successfully found. Driver Reaassignment: %s", driver_assignment)
+            
+            # if found, no exception is raised, so can proceed to set the schedule to unassigned          
+            db.session.query(Schedule).filter((Schedule.timeslot == timeslot) & (Schedule.driver_id == data["driver_id"])).update({"assigned": False})
             message = {
                 "order_id": data["order_id"],
                 "status": "Cancelled",
                 "reassigned_driver_id": driver_assignment["driver_id"],
-                "timeslot": timeslot,
+                "timeslot": unix_timeslot,
                 "driver_id": data["driver_id"],
                 "delivery_id": data["delivery_id"],
+                "location": data["location"],
 
             }
+            message = json.dumps(message)
+
+
             # send message regarding new driver assignment
-            amqp_lib.publish_message(
-                exchange_name="delivery_cancellation_topic",
+            RabbitMQManager.channel.basic_publish(
+                exchange="delivery_cancellation_topic",
                 routing_key="delivery_cancellation.success",
-                message=message,
-                properties=properties, 
+                body=message,
+                properties=pika.BasicProperties(delivery_mode=2), 
             )
             
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        except Exception as e:
+        except DriverNotFoundException as de:
             # if not found, an exception is raised
-            if (str(e) == "No drivers are available for the desired timeslot."):
+            logging.info("No driver has been found for this attempted cancellation")
+            if (str(de) == "No drivers are available for the desired timeslot."):
                 # get time now
                 current_time = datetime.now(timezone.utc)
-                if current_time < timeslot - 24*60*60:
+                if current_time < timeslot - timedelta(days=1):
                     #if delivery timeslot is more than 24 hours away, send cancellation back into queue
-                    amqp_lib.publish_message(
-                        exchange_name="delivery_cancellation_topic",
+                    RabbitMQManager.channel.basic_publish(
+                        exchange="delivery_cancellation_topic",
                         routing_key="delivery_cancellation.pending",
-                        message=message,
-                        properties=properties,
+                        body=message,
+                        properties=pika.BasicProperties(delivery_mode=2),
                     )
 
-                    # every 5 minutes, this message will be sent into the dlq and u will consume it again
+                    # every 1 minute, this message will be sent into the dlq and u will consume it again
                 else:
                     # if delivery timeslot is less than 24 hours away, send back to original queue
-                    amqp_lib.publish_message(
-                        exchange_name="delivery_cancellation_topic",
+                    RabbitMQManager.channel.basic_publish(
+                        exchange="delivery_cancellation_topic",
                         routing_key="delivery_cancellation.escalated",
-                        message=message,
-                        properties=properties,
+                        body=message,
+                        properties=pika.BasicProperties(delivery_mode=2),
                     )
                     
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-            
+                ch.basic_ack(delivery_tag=method.delivery_tag)      
+
+ 
             
     
 
 
-            else:
-                logging.error("Exception:{}".format(str(e)))
-                return
+            # else:
+            #     logging.error("Exception: %s", str(de))
+            #     ch.basic_ack(delivery_tag=method.delivery_tag) 
+            #     return
+            
+        except Exception as e:
+            logging.error("Exception: %s", str(e))   
 
 
 def amqp_start_consuming():
+
+
+
     amqp_lib.start_consuming(
         hostname="rabbitmq",
         port=5672,
@@ -229,6 +256,9 @@ def amqp_start_consuming():
         exchange_type="topic",
         queue_name="dlq",
         callback=find_new_driver)
+
+
+
     
 thread = threading.Thread(target=amqp_start_consuming, daemon=True)
 thread.start()

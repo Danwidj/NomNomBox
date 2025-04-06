@@ -60,7 +60,7 @@ def deal_with_delivery_status_change(ch, method, properties, body):
     with app.app_context():
         if method.routing_key == "delivery_cancellation.escalated":
             # Handle the escalation message
-            logging.info("Received escalation message:", body.decode())
+            logging.info("Received escalation message: %s", body.decode())
             # Parse the message
             message = json.loads(body.decode())
             delivery_id = message["delivery_id"]
@@ -73,12 +73,12 @@ def deal_with_delivery_status_change(ch, method, properties, body):
                     "error": str(e)
                 }), 500
 
-            # Acknowledge the message
+            
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         elif method.routing_key == "delivery_cancellation.success":
             # 1 update old delivery with status of cancelled
-            logging.info("Received success message:", body.decode())
+            logging.info("Received success message: %s", body.decode())
             # Parse the message
             message = json.loads(body.decode())
             delivery_id = message["delivery_id"]
@@ -115,9 +115,11 @@ def deal_with_delivery_status_change(ch, method, properties, body):
             if order_response["code"] not in range(200, 202):
                 logging.error("Failed to update order with new delivery id: %s", order_response)
 
-            
-            
             ch.basic_ack(delivery_tag=method.delivery_tag)
+
+            
+        else:    
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
 
@@ -125,13 +127,17 @@ def deal_with_delivery_status_change(ch, method, properties, body):
 
 def start_consuming():
     # Start consuming messages from the RabbitMQ queue
+
     amqp_lib.start_consuming(
         hostname="rabbitmq",
         port=5672,
         exchange_name="delivery_cancellation_topic",
         exchange_type="topic",
-        queue_name="delivery_cancellation_queue",
+        queue_name="delivery_cancellation_general_queue",
         callback=deal_with_delivery_status_change)
+
+
+
 
 consumer_thread = threading.Thread(target=start_consuming)
 consumer_thread.daemon = True  
@@ -442,7 +448,7 @@ def update_delivery_status(delivery_id):
                     exchange="delivery_cancellation_topic",
                     routing_key="delivery_cancellation.pending",
                     body=json.dumps(update_delivery_request),
-                    properties=pika.BasicProperties(delivery_mode=2, expiration="10"),
+                    properties=pika.BasicProperties(delivery_mode=2, expiration="0"),
                 )
                 return jsonify({
                     "code": 200,
@@ -566,8 +572,20 @@ def get_assigned_deliveries():
         driver_id = request.args.get('driver_id')
         if driver_id:
             deliveries = get_deliveries_by_driver_id(driver_id)
-            # deliveries = jsonify(deliveries)
             logging.info(f"deliveries:\n{json.dumps(deliveries, indent=4)}")
+            if deliveries["code"] == 404:
+                return jsonify({
+                    "code": 404,
+                    "message": "No deliveries found for this driver"
+                }), 404
+            elif deliveries["code"] not in range(200, 202):
+                return jsonify({
+                    "code": 500,
+                    "message": "Failed to get deliveries",
+                    "error": deliveries
+                }), 500
+            deliveries = deliveries["data"]["deliveries"]
+            # deliveries = jsonify(deliveries)
             for delivery in deliveries:
                 response.append({
                     "delivery_id": delivery["id"],
@@ -599,23 +617,31 @@ def get_assigned_deliveries():
         #             response[i]["status"] = response[i]["cancellation_status"]
         #         else:                
         #             response[i]["status"] = orders[i]["data"]["status"]
-        # Step 1: Build a lookup dictionary for orders by order_id
+        
+        
+        orders = get_orders(order_ids)
+        orders = orders["data"]
+
+       
         orders_by_id = {order["order_id"]: order for order in orders}
 
-        # Step 2: Update delivery status using order info
-        for delivery in deliveries:
-            order_id = delivery["order_id"]
+        new_response = []
+
+        for item in response:
+            order_id = item["order_id"]
             order = orders_by_id.get(order_id)
 
-            # Skip if order not found or contains error
             if not order or "error" in order:
                 continue
 
-            # Prioritize cancellation_status if present
-            if delivery.get("cancellation_status") is not None:
-                delivery["status"] = delivery["cancellation_status"]
+            if item["cancellation_status"] is not None:
+                item["status"] = item["cancellation_status"]
             else:
-                delivery["status"] = order["data"]["status"]
+                item["status"] = order["data"]["status"]
+
+            new_response.append(item)
+
+        response = new_response
 
             
             # orders.append(order)
@@ -630,11 +656,11 @@ def get_assigned_deliveries():
         logging.info(f"response from orders: {pretty_json}")
         return jsonify({
             "code":200,
-            "data": deliveries
+            "data": response
         }), 200
     except Exception as e:
         
-        logging.error("Error:", str(e))
+        logging.error(f"Error: {str(e)}")
         logging.error(traceback.format_exc())
         
         return jsonify({
