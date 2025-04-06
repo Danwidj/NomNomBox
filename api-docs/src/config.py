@@ -49,7 +49,12 @@ SERVICES = {
     'send_query': {
         'url': 'http://localhost:5100',
         'description': 'Send Query Service'
-    }
+    },
+    'place_delivery_request': {
+        'url': 'httpL//localhost:5014',
+        'description': "Place Delivery Request Service"
+    },
+
 }
 
 # Swagger UI settings
@@ -85,6 +90,9 @@ Available Services (alphabetically):
 - Payment Service (port 5004)
 - Schedule Service (port 5001)
 - Send Query Service (port 5100)
+- Place Delivery Request Service (port 5014)
+
+
 '''
     },
     'servers': [
@@ -136,6 +144,10 @@ Available Services (alphabetically):
         {
             'url': SERVICES['send_query']['url'],
             'description': SERVICES['send_query']['description']
+        },
+        {
+            'url': SERVICES['place_delivery_request']['url'],
+            'description': SERVICES['place_delivery_request']['description']
         }
     ],
     'components': {
