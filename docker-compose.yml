@@ -283,5 +283,6 @@ volumes:
     name: rabbitmq_data
   kafka_data:
     name: kafka_data
+    external: false # Ensures volume is removed when using docker-compose down -v
   redis_data:
     name: redis_data

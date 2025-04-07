@@ -1,1 +1,3 @@
-"""Schema definitions package.""" 
+"""Schema package."""
+
+from . import common, models 

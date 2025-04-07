@@ -121,7 +121,13 @@ The application uses modern technologies including:
    docker-compose down
    ```
 
-6. To rebuild a specific service after making changes:
+6. To stop all services and remove volumes (including kafka_data):
+
+   ```
+   docker-compose down -v
+   ```
+
+7. To rebuild a specific service after making changes:
    ```
    docker-compose build <service-name>
    docker-compose up -d <service-name>
@@ -160,3 +166,43 @@ The application uses modern technologies including:
   - Management Console: http://localhost:15672 (default credentials: guest/guest)
 
 For detailed API documentation, visit http://localhost:8080/docs after starting the application.
+
+## Using Scripts for Different Platforms
+
+### Linux/macOS Shell Scripts
+
+For Linux or macOS systems, you can use the shell scripts:
+
+1. Make the shell scripts executable:
+
+   ```
+   chmod +x start-nomnombox.sh stop-nomnombox.sh
+   ```
+
+2. To start all services:
+
+   ```
+   ./start-nomnombox.sh
+   ```
+
+3. To stop all services and remove volumes:
+
+   ```
+   ./stop-nomnombox.sh
+   ```
+
+### Windows Batch Files
+
+For Windows systems, you can use the batch files:
+
+1. To start all services:
+
+   ```
+   start-nomnombox.bat
+   ```
+
+2. To stop all services and remove volumes:
+
+   ```
+   stop-nomnombox.bat
+   ```
