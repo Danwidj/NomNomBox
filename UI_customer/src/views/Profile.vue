@@ -364,7 +364,7 @@
               <h3 class="text-lg font-semibold">Order #{{ order.orderId }}</h3>
               <p class="text-muted-foreground">{{ formatDate(order.createdAt) }}</p>
               <p class="text-muted-foreground text-sm">
-                Delivered: {{ formatDate(order.deliveryDate) }}
+                Delivered: {{ order.scheduledDelivery ? formatDate(order.scheduledDelivery) : 'Unknown Date' }} <!-- this line worked -->
               </p>
             </div>
             
@@ -385,7 +385,12 @@
               <button 
                 v-if="shouldShowDeliveryButton(order)"
                 @click="confirmDelivery(order.orderId)"
-                class="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center gap-1 mt-2"
+                :class="[
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1 mt-2',
+                  order.disabled 
+                    ? 'bg-primary/50 text-primary-foreground/50 cursor-not-allowed' 
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                ]"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -820,9 +825,10 @@ export default {
         }
         
         const deliveryId = orderData.data.deliveryId;
-        if (!deliveryId) {
-          console.error('No delivery associated with this order');
-          alert('No delivery found for this order.');
+        const timeslot = orderData.data.timeslot; // Ensure the backend provides this field
+        if (!deliveryId || !timeslot) {
+          console.error('No delivery or timeslot associated with this order');
+          alert('No delivery or timeslot found for this order.');
           return;
         }
         
@@ -834,7 +840,8 @@ export default {
           },
           body: JSON.stringify({
             order_id: orderId,
-            status: 'Received by Customer'
+            status: 'Received by Customer',
+            timeslot: timeslot // Include the timeslot in the payload
           })
         });
         
@@ -849,6 +856,7 @@ export default {
         const orderIndex = orders.value.findIndex(order => order.orderId === orderId);
         if (orderIndex !== -1) {
           orders.value[orderIndex].status = 'Received by Customer';
+          orders.value[orderIndex].disabled = true; // Disable the button
           // Also update in localStorage
           localStorage.setItem(`order_${orderId}_status`, 'Received by Customer');
         }
