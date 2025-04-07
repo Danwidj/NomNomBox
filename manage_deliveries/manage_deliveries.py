@@ -143,7 +143,7 @@ def deal_with_delivery_status_change(ch, method, properties, body):
                 "email": driver_response["email"],
                 "timeslot": message["timeslot"],
                 "name": driver_response["name"],
-                "delivery_id": delivery_id,
+                "delivery_id": new_delivery_id,
                 "location": message["location"],
             }
             notification_message = json.dumps(notification_message)

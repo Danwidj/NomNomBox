@@ -60,18 +60,18 @@ services:
     depends_on:
       - rabbitmq
 
-  manage_deliveries:
-    image: NomNomBox/manage_deliveries:latest
-    build:
-      context: ./manage_deliveries
-      dockerfile: dockerfile
-    ports:
-      - "5000:5000"
-    depends_on:
-      - rabbitmq
-      - rabbitmq_setup
-      - redis
-      - kafka
+  # manage_deliveries:
+  #   image: NomNomBox/manage_deliveries:latest
+  #   build:
+  #     context: ./manage_deliveries
+  #     dockerfile: dockerfile
+  #   ports:
+  #     - "5000:5000"
+  #   depends_on:
+  #     - rabbitmq
+  #     - rabbitmq_setup
+  #     - redis
+  #     - kafka
 
   driver_frontend:
     image: NomNomBox/driver_frontend:latest
@@ -224,6 +224,39 @@ services:
     depends_on:
       - send_query
       - chathistory
+
+  place_delivery_request:
+    image: NomNomBox/place_delivery_request:latest
+    build:
+      context: ./place_delivery_request
+      dockerfile: Dockerfile
+    ports:
+      - "5014:5014"
+    depends_on:
+      - order
+      - delivery
+
+  update_schedule:
+    image: NomNomBox/update_schedule:latest
+    build:
+      context: ./update_schedule
+      dockerfile: Dockerfile
+    ports:
+      - "5011:5011"
+    depends_on:
+      - order
+      - inventory
+
+  update_delivery_status:
+    image: NomNomBox/update_delivery_status:latest
+    build:
+      context: ./update_delivery_status
+      dockerfile: Dockerfile
+    ports:
+      - "5013:5013"
+    depends_on:
+      - order
+      - delivery
 
 # notifications_consumer:
 #   image: NomNomBox/notifications:latest

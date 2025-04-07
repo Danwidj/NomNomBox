@@ -63,7 +63,7 @@ export default function DeliveryList() {
         }
         // Fetch deliveries from the API
         const response = await fetch(
-          `http://localhost:5000/deliveries?driver_id=${driver_id}`
+          `http://localhost:5014/deliveries?driver_id=${driver_id}`
         );
         // add the portion below for JWT auth:
         // , {
@@ -148,7 +148,7 @@ export default function DeliveryList() {
       );
 
       // Send update to backend API
-      await fetch(`http://localhost:5000/deliveries/${delivery_id}`, {
+      await fetch(`http://localhost:5013/api/orders/${order_id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
