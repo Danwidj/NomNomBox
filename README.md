@@ -148,6 +148,7 @@ The application uses modern technologies including:
 - Send Query Service: http://localhost:5100
 - Gemini Service: http://localhost:5009
 - API Documentation: http://localhost:8080
+- OutSystems API Documentation: https://personal-6fbyxkeb.outsystemscloud.com/DriverService/rest/v1/
 
 ### Infrastructure
 
