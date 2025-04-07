@@ -247,6 +247,8 @@ def update_delivery_status(delivery_id):
             order = get_order_by_id(order_id)
             customer_id = order["data"]["customerId"]
             # get token from firebase
+            email = "esd@gmail.com"
+            password = "esd123"
             firebase_auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={firebase_api_key}"
             payload = {"email": email, "password": password, "returnSecureToken": True}
             response = requests.post(firebase_auth_url, json=payload)
@@ -257,7 +259,7 @@ def update_delivery_status(delivery_id):
                 return jsonify({"code": 401, "message": "Invalid credentials while connecting to firebase for auth token", "error": response.json()}), 401
             
             # use token from firebase to coneect to customer service to  get customer info
-            time.sleep(1)
+            time.sleep(2)
             customer_info = requests.get(user_URL + "/customer/" + str(customer_id), headers={"Authorization": f"Bearer {token}"})
             if customer_info.status_code == 404:
                 return jsonify({
@@ -304,10 +306,44 @@ def update_delivery_status(delivery_id):
 
             elif status == "Received by Customer":
                 print("  Publish message with routing_key=delivery.received\n")
+                # get driver id from delivery id
+                delivery = invoke_http(delivery_URL + "/delivery/" + str(delivery_id), method='GET')
+
+                if delivery["code"] == 404:
+                    return jsonify({
+                        "code": 404,
+                        "message": "Delivery not found"
+                    }), 404
+                elif delivery["code"] not in range(200, 202):
+                    return jsonify({
+                        "code": 500,
+                        "message": "Failed to get delivery",
+                        "error": delivery
+                    }), 500
+                delivery = delivery["data"]
+                driver_id = delivery["data"]["driver_id"]
+                # get driver details from driver id
+                driver_response = requests.get(driver_URL + str(driver_id) + "/info")
+                if driver_response.status_code not in range(200, 202):
+                    logging.error("Failed to get driver information: %s", driver_response.json())
+                driver_response = driver_response.json()
+                email = driver_response["email"]
+                name = driver_response["name"]
+                location = delivery["data"]["location"]
+                timeslot = delivery["data"]["timeslot"]
+                driver_notification_message = {
+                    "delivery_id": delivery_id,
+                    "name": name,
+                    "email": email,
+                    "location": location,
+                    "timeslot": timeslot,
+                    "status": "Received by Customer",
+                }
+                driver_notification_message = json.dumps(driver_notification_message)
                 RabbitMQManager.channel.basic_publish(
                     exchange=exchange_name,
                     routing_key="delivery.received",
-                    body=notification_message,
+                    body=driver_notification_message,
                     properties=pika.BasicProperties(delivery_mode=2),
                 )
 
@@ -327,6 +363,11 @@ def update_delivery_status(delivery_id):
                 "code": 500,
                 "message": str(e)
             }), 500
+    
+    return jsonify({
+        "code": 400,
+        "message": "Invalid JSON input"
+    }), 400
 
 
 

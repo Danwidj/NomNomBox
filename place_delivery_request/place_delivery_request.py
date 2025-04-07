@@ -174,11 +174,12 @@ def process_place_delivery_request(delivery_request):
     except Exception as e:
         error_details = traceback.format_exc()
         logging.error("Exception occurred while processing delivery request:\n%s", error_details)
-        return jsonify({
-            "code": 500,
-            "message": "Internal server error: " + str(e),
-            "error_details": error_details
-        }), 500
+        # return jsonify({
+        #     "code": 500,
+        #     "message": "Internal server error: " + str(e),
+        #     "error_details": error_details
+        # }), 500
+        raise e
     
 
 

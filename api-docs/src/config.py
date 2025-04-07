@@ -51,10 +51,17 @@ SERVICES = {
         'description': 'Send Query Service'
     },
     'place_delivery_request': {
-        'url': 'httpL//localhost:5014',
+        'url': 'http://localhost:5014',
         'description': "Place Delivery Request Service"
     },
-
+    'update_delivery_status': {
+        'url': 'http://localhost:5013',
+        'description': "Update Delivery Status Service"
+    },
+    'manage_driver_availability': {
+        'url': 'http://localhost:5011',
+        'description': "Manage Driver Availability Service"
+    }
 }
 
 # Swagger UI settings
@@ -84,14 +91,15 @@ Available Services (alphabetically):
 - Gemini AI Service (port 5009)
 - Inventory Service (port 5006)
 - Manage Deliveries Service (port 5000)
+- Manage Driver Availability Service (port 5015)
 - Notifications Service (port 9000)
 - Order Service (port 5003)
 - Order Composite Service (port 5005)
 - Payment Service (port 5004)
+- Place Delivery Request Service (port 5014)
 - Schedule Service (port 5001)
 - Send Query Service (port 5100)
-- Place Delivery Request Service (port 5014)
-
+- Update Delivery Status Service (port 5013)
 
 '''
     },
@@ -122,6 +130,10 @@ Available Services (alphabetically):
             'description': SERVICES['manage_deliveries']['description']
         },
         {
+            'url': SERVICES['manage_driver_availability']['url'],
+            'description': SERVICES['manage_driver_availability']['description']
+        },
+        {
             'url': SERVICES['notifications']['url'],
             'description': SERVICES['notifications']['description']
         },
@@ -138,6 +150,10 @@ Available Services (alphabetically):
             'description': SERVICES['payment']['description']
         },
         {
+            'url': SERVICES['place_delivery_request']['url'],
+            'description': SERVICES['place_delivery_request']['description']
+        },
+        {
             'url': SERVICES['schedule']['url'],
             'description': SERVICES['schedule']['description']
         },
@@ -146,8 +162,8 @@ Available Services (alphabetically):
             'description': SERVICES['send_query']['description']
         },
         {
-            'url': SERVICES['place_delivery_request']['url'],
-            'description': SERVICES['place_delivery_request']['description']
+            'url': SERVICES['update_delivery_status']['url'],
+            'description': SERVICES['update_delivery_status']['description']
         }
     ],
     'components': {
@@ -163,4 +179,4 @@ Available Services (alphabetically):
     'security': [
         {'BearerAuth': []}
     ]
-} 
+}

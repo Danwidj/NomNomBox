@@ -3,6 +3,10 @@
 from collections import OrderedDict
 from schemas.common import error_response, success_response
 
+"""Place a Delivery Request Service API specification."""
+
+from collections import OrderedDict
+
 def get_specification():
     """Return the OpenAPI specification for the Delivery Request service."""
     return {
@@ -19,8 +23,8 @@ def get_specification():
                 'tags': ['DeliveryRequest']
             }
         ],
-        'paths': OrderedDict([
-            ('/', {
+        'paths': {
+            '/': {
                 'post': {
                     'tags': ['DeliveryRequest'],
                     'operationId': 'placeDeliveryRequest',
@@ -53,41 +57,83 @@ def get_specification():
                         }
                     },
                     'responses': {
-                        '200': success_response(
-                            'Delivery request placed successfully',
-                            {
-                                'type': 'object',
-                                'properties': {
-                                    'code': {
-                                        'type': 'integer',
-                                        'example': 200
-                                    },
-                                    'message': {
-                                        'type': 'string',
-                                        'example': 'Delivery request placed successfully'
-                                    },
-                                    'data': {
+                        '200': {
+                            'description': 'Delivery request placed successfully',
+                            'content': {
+                                'application/json': {
+                                    'schema': {
                                         'type': 'object',
                                         'properties': {
-                                            'deliveryId': {
-                                                'type': 'string',
-                                                'description': 'Unique identifier for the created delivery'
+                                            'code': {
+                                                'type': 'integer',
+                                                'example': 200
                                             },
-                                            'driverId': {
+                                            'message': {
                                                 'type': 'string',
-                                                'description': 'ID of the assigned driver'
+                                                'example': 'Delivery request placed successfully'
+                                            },
+                                            'data': {
+                                                'type': 'object',
+                                                'properties': {
+                                                    'deliveryId': {
+                                                        'type': 'string',
+                                                        'description': 'Unique identifier for the created delivery'
+                                                    },
+                                                    'driverId': {
+                                                        'type': 'string',
+                                                        'description': 'ID of the assigned driver'
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                        ),
-                        '400': error_response('Invalid request format'),
-                        '500': error_response('Internal server error')
+                        },
+                        '400': {
+                            'description': 'Invalid request format',
+                            'content': {
+                                'application/json': {
+                                    'schema': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'code': {
+                                                'type': 'integer',
+                                                'example': 400
+                                            },
+                                            'message': {
+                                                'type': 'string',
+                                                'example': 'Invalid JSON input: ...'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        '500': {
+                            'description': 'Internal server error',
+                            'content': {
+                                'application/json': {
+                                    'schema': {
+                                        'type': 'object',
+                                        'properties': {
+                                            'code': {
+                                                'type': 'integer',
+                                                'example': 500
+                                            },
+                                            'message': {
+                                                'type': 'string',
+                                                'example': 'place_delivery_request.py internal error: ...'
+                                            },
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            })
-        ]),
+            }
+        },
         'components': {
             'schemas': {
                 'DeliveryRequest': {

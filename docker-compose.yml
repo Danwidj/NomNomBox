@@ -236,10 +236,10 @@ services:
       - order
       - delivery
 
-  manage_availability:
-    image: NomNomBox/manage_availability:latest
+  update_schedule:
+    image: NomNomBox/update_schedule:latest
     build:
-      context: ./manage_availability
+      context: ./update_schedule
       dockerfile: Dockerfile
     ports:
       - "5011:5011"

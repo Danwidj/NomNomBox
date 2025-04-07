@@ -144,6 +144,35 @@ def process_message(ch, method, properties, body):
                 logging.info(f"Email sent successfully to {driver_email}")
             else:
                 logging.error(f"Failed to send email to {driver_email}")
+        
+        elif routing_key == "delivery.received":
+            delivery_id = data.get("delivery_id")
+            driver_name = data.get("name")
+            driver_email = data.get("email")
+            location = data.get("location")
+            timeslot = data.get("timeslot")
+            status = data.get("status")
+            subject= f"Delivery Assigned - Delivery #{delivery_id}"
+            # Define Singapore timezone (UTC+8)
+            sg_timezone = timezone(timedelta(hours=8))
+
+            # Convert the Unix timestamp to a datetime object in SG time
+            formatted_timeslot = datetime.fromtimestamp(int(timeslot), tz=sg_timezone).strftime('%A, %d %B %Y at %I:%M %p')
+            body_text = f"""
+            Dear {driver_name},
+            The delivery with ID {delivery_id} has been received by the customer! 🚚
+            If you can't recall the delivery with the ID, here are the details:
+            - Delivery ID: {delivery_id}
+            - Location: {location}
+            - Timeslot: {formatted_timeslot}
+            """
+            email_success = send_email(driver_email, subject, body_text)
+            if email_success:
+                logging.info(f"Email sent successfully to {driver_email}")
+            else:
+                logging.error(f"Failed to send email to {driver_email}")
+
+
 
 
 
@@ -151,7 +180,6 @@ def process_message(ch, method, properties, body):
         elif routing_key in ( #Change condition of key routing here
             "delivery.pickedup",
             "delivery.delivered",
-            "delivery.received",
         ):
             # Process delivery status updates
             delivery_id = data.get("delivery_id")

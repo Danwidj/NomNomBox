@@ -148,7 +148,7 @@ export default function DeliveryList() {
       );
 
       // Send update to backend API
-      await fetch(`http://localhost:5013/deliveries/${delivery_id}`, {
+      await fetch(`http://localhost:5013/api/orders/${order_id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

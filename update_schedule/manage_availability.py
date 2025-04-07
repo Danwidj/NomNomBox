@@ -92,7 +92,7 @@ def update_availability():
             if len(occupied_timeslots) > 0:
                 # check if the driver is already assigned to any deliveries in the occupied timeslots
                 # if so, return error
-                response = requests.get("http://place_delivery_request:5013/deliveries?driver_id=" + str(delivery_request["driver_id"]))
+                response = requests.get("http://place_delivery_request:5014/deliveries?driver_id=" + str(delivery_request["driver_id"]))
                 if response.status_code != 200:
                     return jsonify({
                         "code": response.status_code,
