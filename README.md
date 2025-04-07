@@ -52,6 +52,32 @@ The application uses modern technologies including:
 - Docker and Docker Compose installed on your machine
 - Git (to clone the repository if needed)
 
+### Setting up Docker
+
+1. Install Docker Desktop
+
+   - Download Docker Desktop from [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
+   - Follow the installation instructions for your operating system
+
+2. Create a Docker Hub account
+
+   - Visit [https://hub.docker.com/signup](https://hub.docker.com/signup) if you don't already have an account
+
+3. Log in to Docker
+
+   - Open a terminal or command prompt
+   - Run the command:
+     ```
+     docker login
+     ```
+   - Enter your Docker Hub username and password when prompted
+
+4. Verify Docker installation
+   - Run the following command to check that Docker is working properly:
+     ```
+     docker --version
+     ```
+
 ## Steps to Run the Application
 
 1. Clone the repository (if you haven't already):
