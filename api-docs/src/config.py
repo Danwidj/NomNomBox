@@ -91,7 +91,7 @@ Available Services (alphabetically):
 - Gemini AI Service (port 5009)
 - Inventory Service (port 5006)
 - Manage Deliveries Service (port 5000)
-- Manage Driver Availability Service (port 5015)
+- Manage Driver Availability Service (port 5011)
 - Notifications Service (port 9000)
 - Order Service (port 5003)
 - Order Composite Service (port 5005)
@@ -164,6 +164,10 @@ Available Services (alphabetically):
         {
             'url': SERVICES['update_delivery_status']['url'],
             'description': SERVICES['update_delivery_status']['description']
+        },
+        {
+            'url': SERVICES['manage_driver_availability']['url'],
+            'description': SERVICES['manage_driver_availability']['description']
         }
     ],
     'components': {
